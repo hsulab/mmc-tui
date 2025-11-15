@@ -7,6 +7,8 @@ import {
   TextAttributes,
 } from "@opentui/core";
 
+import { setupKeybinds } from "./keybinds.ts";
+
 /**
  * Add components to the renderer
  */
@@ -35,4 +37,5 @@ if (import.meta.main) {
     targetFps: 30,
   });
   run(renderer);
+  setupKeybinds(renderer);
 }
