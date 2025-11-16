@@ -30,6 +30,7 @@ class Pane extends Node {
     this.box = Box(
       {
         id: this.id,
+        zIndex: 0,
         visible: false,
         position: "absolute",
         flexGrow: 1,
@@ -133,12 +134,7 @@ export class PaneLayout {
     this._width = width;
     this._height = height;
 
-    this.root = new Split(
-      "horizontal",
-      0.5,
-      new Pane(this.generateId(), true),
-      new Pane(this.generateId(), false),
-    );
+    this.root = new Pane(this.generateId(), true);
     this.root.collectPanes().forEach((p) => renderer.root.add(p.box));
   }
 
