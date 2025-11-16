@@ -49,6 +49,10 @@ class Pane extends Node {
       box.left = rect.left;
       box.width = rect.width;
       box.height = rect.height;
+      box.backgroundColor = this.active
+        ? LattePalette.base
+        : LattePalette.surface0;
+      box.borderStyle = "rounded";
       box.borderColor = this.active ? LattePalette.peach : LattePalette.teal;
     }
   }
