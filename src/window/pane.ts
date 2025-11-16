@@ -120,7 +120,9 @@ class Split extends Node {
 
 export class PaneLayout {
   private renderer: CliRenderer;
+
   private root: Node;
+  private prev: Node | null = null;
 
   private _width: number;
   private _height: number;
@@ -246,6 +248,34 @@ export class PaneLayout {
       targetPane.active = true;
       this.render();
     }
+  }
+
+  zoomActive() {
+    const panes = this.root.collectPanes();
+    const activePane = panes.find((p) => p.active);
+    if (!activePane) return;
+
+    if (this.prev === null) {
+      this.prev = this.root;
+      this.root = activePane;
+      panes.forEach((p) => {
+        if (p !== activePane) {
+          const r = this.renderer.root.getRenderable(p.id);
+          if (r) r.visible = false;
+        }
+      });
+    } else {
+      this.root = this.prev;
+      this.prev = null;
+      panes.forEach((p) => {
+        if (p !== activePane) {
+          const r = this.renderer.root.getRenderable(p.id);
+          if (r) r.visible = true;
+        }
+      });
+    }
+
+    this.render();
   }
 
   private replaceNode(node: Node, target: Node, replacement: Node): Node {

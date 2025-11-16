@@ -48,6 +48,9 @@ export function run(renderer: CliRenderer) {
     if (key.name === "l" && key.ctrl) {
       panes.moveActive("right");
     }
+    if (key.name === "z" && key.ctrl) {
+      panes.zoomActive();
+    }
   });
 }
 
