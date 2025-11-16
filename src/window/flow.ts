@@ -110,13 +110,25 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
   protected override onMouseEvent(event: MouseEvent): void {
     if (event.propagationStopped) return;
 
-    const cellKey = `${event.x},${event.y}`;
+    const localX = event.x - this.x;
+    const localY = event.y - this.y;
+
+    if (
+      localX < 0 ||
+      localY < 0 ||
+      localX >= this.width ||
+      localY >= this.height
+    ) {
+      return;
+    }
+
+    const cellKey = `${localX},${localY}`;
 
     switch (event.type) {
       case "move":
         this.trailCells.set(cellKey, {
-          x: event.x,
-          y: event.y,
+          x: localX,
+          y: localY,
           timestamp: Date.now(),
           isDrag: false,
         });
@@ -125,8 +137,8 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
 
       case "drag":
         this.trailCells.set(cellKey, {
-          x: event.x,
-          y: event.y,
+          x: localX,
+          y: localY,
           timestamp: Date.now(),
           isDrag: true,
         });
@@ -188,8 +200,8 @@ export class FlowPane extends Pane {
         //   backgroundColor: LattePalette.overlay2,
         // });
         mouseInteractionContainer.zIndex = 100;
-        mouseInteractionContainer.top = rect.top + 1;
-        mouseInteractionContainer.left = rect.left + 1;
+        mouseInteractionContainer.top = 1;
+        mouseInteractionContainer.left = 1;
         mouseInteractionContainer.width = rect.width - 4;
         mouseInteractionContainer.height = rect.height - 4;
         box.add(mouseInteractionContainer);
@@ -197,8 +209,8 @@ export class FlowPane extends Pane {
         console.log(
           `Updating MouseInteractionFrameBuffer size for FlowPane ${this.id}`,
         );
-        mouseInteractionContainer.top = rect.top + 1;
-        mouseInteractionContainer.left = rect.left + 1;
+        mouseInteractionContainer.top = 1;
+        mouseInteractionContainer.left = 1;
         mouseInteractionContainer.width = rect.width - 4;
         mouseInteractionContainer.height = rect.height - 4;
       }
