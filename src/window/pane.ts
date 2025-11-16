@@ -1,6 +1,7 @@
 import { BoxRenderable, CliRenderer } from "@opentui/core";
 
 import { type Rect, type Direction, Node, Pane, Split } from "./base.ts";
+import { FlowPane } from "./flow.ts";
 
 export class PaneLayout {
   private renderer: CliRenderer;
@@ -56,8 +57,7 @@ export class PaneLayout {
     const activePane = panes.find((p) => p.active);
     if (!activePane) return;
 
-    const newPane = new Pane(this.generateId(), true);
-    this.renderer.root.add(newPane.box);
+    const newPane = new FlowPane(this.generateId(), true);
 
     activePane.active = false;
 
@@ -66,6 +66,8 @@ export class PaneLayout {
       activePane,
       new Split(direction, 0.5, activePane, newPane),
     );
+
+    this.renderer.root.add(newPane.box);
 
     this.render();
   }

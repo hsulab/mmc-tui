@@ -18,7 +18,6 @@ export abstract class Node {
 }
 
 export class Pane extends Node {
-  type: string = "pane";
   id: string;
   active: boolean;
   box: ProxiedVNode<typeof BoxRenderable>;
@@ -37,11 +36,16 @@ export class Pane extends Node {
         flexGrow: 1,
       },
       Text({
+        zIndex: 0,
         content: `${this.type}-${this.id.slice(-12)}`,
         fg: LattePalette.text,
         attributes: 5,
       }),
     );
+  }
+
+  get type(): string {
+    return "base";
   }
 
   draw(renderer: CliRenderer, rect: Rect) {
