@@ -4,8 +4,6 @@ export function setupKeybinds(renderer: CliRenderer) {
   renderer.keyInput.on("keypress", (key: KeyEvent) => {
     if (key.name === "`") {
       renderer.console.toggle();
-    } else if (key.name === "q" && key.ctrl) {
-      renderer.destroy();
     }
   });
 }
