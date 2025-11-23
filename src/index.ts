@@ -1,7 +1,7 @@
 import { CliRenderer, createCliRenderer } from "@opentui/core";
 
 import { LattePalette } from "./palette.ts";
-import { mainMenuRenderer } from "./menu.ts";
+import { MainMenu } from "./menu.ts";
 import { PaneLayout } from "./window/pane.ts";
 import { setupKeybinds } from "./keybind/keybinds.ts";
 import { setupPaneKeybinds } from "./keybind/pane.ts";
@@ -13,7 +13,9 @@ export function run(renderer: CliRenderer) {
   renderer.setBackgroundColor(LattePalette.base);
 
   // Set up main menu
-  mainMenuRenderer(renderer);
+  // mainMenuRenderer(renderer);
+  const mainMenu = new MainMenu(renderer);
+  mainMenu.render();
 
   // const panes = new PaneLayout(renderer, renderer.width, renderer.height);
   // panes.render();
