@@ -35,13 +35,21 @@ const selectOptions: SelectOption[] = [
  * Main menu component
  */
 export class MainMenu {
+  public appState: { isMainMenuOpen: boolean };
+
   private renderer: CliRenderer;
 
   private _width: number;
   private _height: number;
 
-  constructor(renderer: CliRenderer, width: number = 80, height: number = 24) {
+  constructor(
+    renderer: CliRenderer,
+    appState: { isMainMenuOpen: boolean },
+    width: number = 80,
+    height: number = 24,
+  ) {
     this.renderer = renderer;
+    this.appState = appState;
 
     this._width = width;
     this._height = height;
@@ -68,6 +76,12 @@ export class MainMenu {
    */
   render() {
     const renderer = this.renderer;
+    // Check if main menu already exists
+    if (renderer.root.getRenderable("main-menu-container")) {
+      console.warn("Main menu already rendered.");
+      return;
+    }
+
     // Add main menu items here
     const mainMenuContainer = new BoxRenderable(renderer, {
       id: "main-menu-container",
@@ -178,15 +192,43 @@ export class MainMenu {
         }, 1000);
         console.log(`Menu item activated: ${option.name}`);
         // Deal with the action here
-        if (option.value === "exit_app") {
+        if (option.value === "create_new") {
+          // Handle create new project
+          this.destroy();
+          console.log("Creating a new project...");
+        } else if (option.value === "exit_app") {
           // We need do some cleanups here before exit
           process.exit(0);
+        } else {
         }
       },
     );
   }
 
   destroy() {
-    // Clean up main menu resources
+    // Clean up renderables
+    const prevNum = this.renderer.root.getChildrenCount();
+
+    this.renderer.root.remove("main-menu-container");
+
+    const callback = () => {
+      console.log("Main menu container removed.");
+    };
+    this.renderer.root.removeListener(
+      SelectRenderableEvents.ITEM_SELECTED,
+      callback,
+    );
+    this.renderer.root.removeListener(
+      SelectRenderableEvents.SELECTION_CHANGED,
+      callback,
+    );
+
+    this.appState.isMainMenuOpen = false;
+
+    const currNum = this.renderer.root.getChildrenCount();
+
+    console.log(
+      `Main menu destroyed. Renderables removed from ${prevNum} to ${currNum}. ${this.appState.isMainMenuOpen}`,
+    );
   }
 }
