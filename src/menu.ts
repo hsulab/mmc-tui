@@ -26,8 +26,8 @@ const selectOptions: SelectOption[] = [
   },
   {
     name: "Quit",
-    value: "new_file",
-    description: "  Leave the app :(",
+    value: "exit_app",
+    description: "  Exit the app :(",
   },
 ];
 
@@ -131,7 +131,7 @@ export function mainMenuRenderer(renderer: CliRenderer) {
   selector.on(
     SelectRenderableEvents.ITEM_SELECTED,
     (_: number, option: SelectOption) => {
-      selector.blur(); // Blur the selector on item selection
+      // selector.blur(); // Blur the selector on item selection
       const currentActivationText = `*** ACTIVATED: ${option.name} (${option.value}) ***`;
       lastActionColor = LattePalette.flamingo;
       if (activatedDisplay) {
@@ -144,6 +144,11 @@ export function mainMenuRenderer(renderer: CliRenderer) {
         }
       }, 1000);
       console.log(`Menu item activated: ${option.name}`);
+      // Deal with the action here
+      if (option.value === "exit_app") {
+        // We need do some cleanups here before exit
+        process.exit(0);
+      }
     },
   );
 }
