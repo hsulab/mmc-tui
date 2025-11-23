@@ -1,6 +1,7 @@
 import { CliRenderer, createCliRenderer } from "@opentui/core";
 
 import { LattePalette } from "./palette.ts";
+import { mainMenuRenderer } from "./menu.ts";
 import { PaneLayout } from "./window/pane.ts";
 import { setupKeybinds } from "./keybind/keybinds.ts";
 import { setupPaneKeybinds } from "./keybind/pane.ts";
@@ -11,17 +12,20 @@ import { setupPaneKeybinds } from "./keybind/pane.ts";
 export function run(renderer: CliRenderer) {
   renderer.setBackgroundColor(LattePalette.base);
 
-  const panes = new PaneLayout(renderer, renderer.width, renderer.height);
-  panes.render();
+  // Set up main menu
+  mainMenuRenderer(renderer);
 
-  renderer.on("resize", () => {
-    panes.width = renderer.width;
-    panes.height = renderer.height;
-    panes.render();
-  });
-
-  setupKeybinds(renderer);
-  setupPaneKeybinds(renderer, panes);
+  // const panes = new PaneLayout(renderer, renderer.width, renderer.height);
+  // panes.render();
+  //
+  // renderer.on("resize", () => {
+  //   panes.width = renderer.width;
+  //   panes.height = renderer.height;
+  //   panes.render();
+  // });
+  //
+  // setupKeybinds(renderer);
+  // setupPaneKeybinds(renderer, panes);
 }
 
 /**
@@ -34,4 +38,6 @@ if (import.meta.main) {
     useKittyKeyboard: true,
   });
   run(renderer);
+  setupKeybinds(renderer);
+  renderer.start();
 }
