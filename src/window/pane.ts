@@ -13,7 +13,7 @@ export class PaneLayout {
   private keybinds: ((key: any) => void) | null = null;
   private statusBar: StatusBar | null = null;
 
-  private windowContainer: BoxRenderable | null = null;
+  public windowContainer: BoxRenderable | null = null;
 
   private root: Node;
   private prev: Node | null = null;
@@ -47,8 +47,14 @@ export class PaneLayout {
     });
     this.renderer.root.add(this.windowContainer);
 
-    this.root = new basicPane(this.renderer, this.generateId(), true);
+    this.root = new FlowPane(this.renderer, this.generateId(), true, {
+      top: 0,
+      left: 0,
+      width: this._width,
+      height: this._height,
+    });
     this.root.collectPanes().forEach((p) => this.windowContainer!.add(p.box));
+    this.updateLayout();
   }
 
   get width(): number {
@@ -71,14 +77,14 @@ export class PaneLayout {
     return Bun.randomUUIDv7();
   }
 
-  render() {
-    // Draw the layout
-    this.root.draw({
+  updateLayout() {
+    this.root.updateRect({
       top: 0,
       left: 0,
       width: this.width,
       height: this.height,
     });
+    this.root.draw();
     this.updateStatusBar();
     if (this.keybinds === null) {
       this.setupKeybinds();
@@ -93,7 +99,7 @@ export class PaneLayout {
         activePane ? activePane.id.slice(-12) : "None"
       } `;
       if ("boxes" in activePane!) {
-        message += `| Nodes: ${activePane.boxes.length} `;
+        message += `| Nodes: ${(activePane.boxes as BoxRenderable[]).length} `;
       }
       this.statusBar.updateStatus(message);
     }
@@ -158,7 +164,23 @@ export class PaneLayout {
     const activePane = panes.find((p) => p.active);
     if (!activePane) return;
 
-    const newPane = new Pane(this.renderer, this.generateId(), true);
+    let rectLeft: Rect = { ...activePane.rect! };
+    if (direction === "horizontal") {
+      rectLeft.height = rectLeft.height / 2;
+    } else {
+      rectLeft.width = rectLeft.width / 2;
+    }
+    let rectRight: Rect = { ...activePane.rect! };
+    if (direction === "horizontal") {
+      rectRight.top = rectRight.top + rectRight.height / 2;
+      rectRight.height = rectRight.height / 2;
+    } else {
+      rectRight.left = rectRight.left + rectRight.width / 2;
+      rectRight.width = rectRight.width / 2;
+    }
+
+    activePane.rect = rectLeft;
+    const newPane = new Pane(this.renderer, this.generateId(), true, rectRight);
 
     activePane.active = false;
 
@@ -170,7 +192,7 @@ export class PaneLayout {
 
     this.windowContainer!.add(newPane.box);
 
-    this.render();
+    this.updateLayout();
   }
 
   closeActive() {
@@ -197,7 +219,7 @@ export class PaneLayout {
       }
     }
 
-    this.render();
+    this.updateLayout();
   }
 
   moveActive(dir: "up" | "down" | "left" | "right") {
@@ -228,7 +250,7 @@ export class PaneLayout {
     if (targetPane) {
       activePane.active = false;
       targetPane.active = true;
-      this.render();
+      this.updateLayout();
     }
   }
 
@@ -257,7 +279,7 @@ export class PaneLayout {
       });
     }
 
-    this.render();
+    this.updateLayout();
   }
 
   private replaceNode(node: Node, target: Node, replacement: Node): Node {

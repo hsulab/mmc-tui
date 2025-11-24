@@ -11,7 +11,7 @@ import {
   MouseEvent,
 } from "@opentui/core";
 
-import { Pane } from "./base.ts";
+import { Pane, type Rect } from "./base.ts";
 import { LattePalette } from "../palette.ts";
 import { DraggableBox } from "./graph.ts";
 
@@ -171,8 +171,13 @@ export class FlowPane extends Pane {
 
   private nodeIndex: number = 0;
 
-  constructor(renderer: CliRenderer, id: string, active: boolean = false) {
-    super(renderer, id, active);
+  constructor(
+    renderer: CliRenderer,
+    id: string,
+    active: boolean = false,
+    rect: Rect,
+  ) {
+    super(renderer, id, active, rect);
 
     this.createMouseInteractionBuffer();
 
@@ -183,18 +188,15 @@ export class FlowPane extends Pane {
     return "flow";
   }
 
-  override draw(rect: {
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  }): void {
-    super.draw(rect);
+  override draw(): void {
+    super.draw();
+
+    const { top, left, width, height } = this.rect;
 
     this.mouseInteractionBuffer!.top = 1;
     this.mouseInteractionBuffer!.left = 1;
-    this.mouseInteractionBuffer!.width = rect.width - 4;
-    this.mouseInteractionBuffer!.height = rect.height - 4;
+    this.mouseInteractionBuffer!.width = width - 4;
+    this.mouseInteractionBuffer!.height = height - 4;
 
     this.setupKeybinds(this.renderer);
   }
@@ -211,7 +213,7 @@ export class FlowPane extends Pane {
     this.mouseInteractionBuffer.width = 20;
     this.mouseInteractionBuffer.height = 20;
 
-    this.box.add(this.mouseInteractionBuffer);
+    this.box!.add(this.mouseInteractionBuffer);
   }
 
   public setupKeybinds(renderer: CliRenderer): void {
@@ -241,11 +243,11 @@ export class FlowPane extends Pane {
             label: nodeLabel,
             color: RGBA.fromHex(LattePalette.teal),
           });
-          this.box.add(newBox);
+          this.box!.add(newBox);
           // Get the created BoxRenderable from the box
-          const nodeBox = this.box
-            .getChildren()
-            .find((child) => child.id === nodeId) as BoxRenderable;
+          const nodeBox = this.box!.getChildren().find(
+            (child) => child.id === nodeId,
+          ) as BoxRenderable;
           this.boxes.push(nodeBox);
           this.nodeIndex += 1;
           console.log(`New node created in FlowPane ${this.id}`);

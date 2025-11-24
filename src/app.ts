@@ -48,7 +48,7 @@ export class MMCTui {
       if (this.panes) {
         this.panes.width = width;
         this.panes.height = height - 1; // Leave space for status bar
-        this.panes.render();
+        this.panes.updateLayout();
       }
     });
   }
@@ -81,7 +81,6 @@ export class MMCTui {
       this.renderer.height - 1, // Leave space for status bar
       this.statusBar,
     );
-    this.panes.render();
 
     // Show status bar
     this.statusBar?.showStatusBar();
@@ -110,6 +109,13 @@ export class MMCTui {
           return;
         } else {
           this.returnToMenu();
+        }
+      }
+      if (key.name === "k" && key.ctrl) {
+        // Count children in panes
+        if (this.panes) {
+          const children = this.panes.windowContainer!.getChildren();
+          console.log(`number of children: ${children.length}`);
         }
       }
       if (key.name === "`") {
