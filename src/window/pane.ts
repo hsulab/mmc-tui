@@ -19,7 +19,7 @@ export class PaneLayout {
     this._width = width;
     this._height = height;
 
-    this.root = new Pane(this.generateId(), true);
+    this.root = new FlowPane(this.generateId(), true);
     this.root.collectPanes().forEach((p) => renderer.root.add(p.box));
   }
 
