@@ -1,6 +1,5 @@
 import { createCliRenderer } from "@opentui/core";
 
-import { setupKeybinds } from "./keybind/keybinds.ts";
 import { MMCTui } from "./app.ts";
 
 /**
@@ -13,6 +12,5 @@ if (import.meta.main) {
     useKittyKeyboard: true,
   });
   new MMCTui(renderer);
-  setupKeybinds(renderer);
   renderer.start();
 }

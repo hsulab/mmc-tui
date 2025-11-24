@@ -239,6 +239,9 @@ export class MMCTui {
           this.returnToMenu();
         }
       }
+      if (key.name === "`") {
+        this.renderer.console.toggle();
+      }
     });
   }
 }
