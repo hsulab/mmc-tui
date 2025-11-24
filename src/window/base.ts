@@ -27,21 +27,14 @@ export class Pane extends Node {
     super();
     this.id = id;
     this.active = active;
-    this.box = Box(
-      {
-        id: this.id,
-        zIndex: 0,
-        visible: false,
-        position: "absolute",
-        flexGrow: 1,
-      },
-      Text({
-        zIndex: 0,
-        content: `${this.type}-${this.id.slice(-12)}`,
-        fg: LattePalette.text,
-        attributes: 5,
-      }),
-    );
+    this.box = Box({
+      id: this.id,
+      zIndex: 0,
+      visible: false,
+      position: "absolute",
+      flexGrow: 1,
+      title: `${this.type}-${this.id.slice(-12)}`,
+    });
   }
 
   get type(): string {
