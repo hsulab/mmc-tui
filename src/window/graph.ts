@@ -140,17 +140,26 @@ export function DraggableBox(
 
       case "drag":
         if (isDragging) {
+          const parent = this.parent as BoxRenderable | null;
+          const parentX = parent?.x ?? 0;
+          const parentY = parent?.y ?? 0;
+          const parentWidth = parent?.width ?? this._ctx.width;
+          const parentHeight = parent?.height ?? this._ctx.height;
+
           const newX = event.x - dragOffsetX;
           const newY = event.y - dragOffsetY;
 
-          const boundedX = Math.max(
-            0,
-            Math.min(newX, this._ctx.width - this.width),
-          );
-          const boundedY = Math.max(
-            4,
-            Math.min(newY, this._ctx.height - this.height),
-          );
+          const innerLeft = parent ? parentX + 1 : 0;
+          const innerTop = parent ? parentY + 1 : 0;
+          const innerRight = parent
+            ? parentX + Math.max(0, parentWidth - this.width - 2)
+            : this._ctx.width - this.width;
+          const innerBottom = parent
+            ? parentY + Math.max(0, parentHeight - this.height - 2)
+            : this._ctx.height - this.height;
+
+          const boundedX = Math.max(innerLeft, Math.min(newX, innerRight));
+          const boundedY = Math.max(innerTop, Math.min(newY, innerBottom));
 
           this.x = boundedX;
           this.y = boundedY;
