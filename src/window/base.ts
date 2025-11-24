@@ -21,7 +21,7 @@ export class Pane extends Node {
 
   id: string;
   active: boolean;
-  box: ProxiedVNode<typeof BoxRenderable>;
+  box: BoxRenderable;
   rect: Rect | null = null;
 
   constructor(renderer: CliRenderer, id: string, active: boolean = false) {
@@ -30,7 +30,7 @@ export class Pane extends Node {
 
     this.id = id;
     this.active = active;
-    this.box = Box({
+    this.box = new BoxRenderable(this.renderer, {
       id: this.id,
       zIndex: 0,
       visible: false,
@@ -45,21 +45,19 @@ export class Pane extends Node {
   }
 
   draw(rect: Rect) {
-    let box = this.renderer.root.getRenderable(this.id);
-    if (box instanceof BoxRenderable) {
-      box.visible = true;
-      box.top = rect.top;
-      box.left = rect.left;
-      box.width = rect.width;
-      box.height = rect.height;
-      box.backgroundColor = this.active
-        ? LattePalette.base
-        : LattePalette.surface0;
-      box.borderStyle = "rounded";
-      box.borderColor = this.active ? LattePalette.peach : LattePalette.teal;
-      // sync changes
-      this.rect = rect;
-    }
+    // sync box properties
+    this.box.visible = true;
+    this.box.top = rect.top;
+    this.box.left = rect.left;
+    this.box.width = rect.width;
+    this.box.height = rect.height;
+    this.box.backgroundColor = this.active
+      ? LattePalette.base
+      : LattePalette.surface0;
+    this.box.borderStyle = "rounded";
+    this.box.borderColor = this.active ? LattePalette.peach : LattePalette.teal;
+    // sync changes
+    this.rect = rect;
   }
 
   collectPanes() {
