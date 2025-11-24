@@ -2,10 +2,11 @@ import { BoxRenderable, CliRenderer } from "@opentui/core";
 
 import { type Rect, type Direction, Node, Pane, Split } from "./base.ts";
 import { FlowPane } from "./flow.ts";
+import { ChartPane } from "./chart.ts";
 
 import { StatusBar } from "../status.ts";
 
-const basicPane = FlowPane;
+const basicPane = ChartPane;
 
 export class PaneLayout {
   private renderer: CliRenderer;

@@ -1,6 +1,6 @@
 import { FrameBufferRenderable, CliRenderer, RGBA } from "@opentui/core";
 
-import { LattePalette } from "./palette.ts";
+import { LattePalette } from "../palette.ts";
 
 export function addScatterPlot(renderer: CliRenderer) {
   const canvas = new FrameBufferRenderable(renderer, {
