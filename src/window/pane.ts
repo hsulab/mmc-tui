@@ -47,7 +47,7 @@ export class PaneLayout {
     });
     this.renderer.root.add(this.windowContainer);
 
-    this.root = new FlowPane(this.renderer, this.generateId(), true, {
+    this.root = new basicPane(this.renderer, this.generateId(), true, {
       top: 0,
       left: 0,
       width: this._width,

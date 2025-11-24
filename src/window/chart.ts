@@ -1,8 +1,29 @@
-import { CliRenderer, FrameBufferRenderable, RGBA } from "@opentui/core";
+import {
+  CliRenderer,
+  FrameBufferRenderable,
+  OptimizedBuffer,
+  RGBA,
+} from "@opentui/core";
 
 import { Pane, type Rect } from "./base.ts";
 
 import { LattePalette } from "../palette.ts";
+
+class ChartCanvasFrameBuffer extends FrameBufferRenderable {
+  constructor(renderer: CliRenderer, id: string) {
+    super(renderer, {
+      id,
+      width: renderer.terminalWidth,
+      height: renderer.terminalHeight,
+      zIndex: 1,
+    });
+  }
+
+  protected override renderSelf(buffer: OptimizedBuffer): void {
+    this.frameBuffer.clear(RGBA.fromHex(LattePalette.green));
+    super.renderSelf(buffer);
+  }
+}
 
 export class ChartPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
@@ -27,19 +48,15 @@ export class ChartPane extends Pane {
   public createChart(): void {
     if (this.canvas) return;
 
-    // We must have box dimensions set before creating the canvas
-    this.canvas = new FrameBufferRenderable(this.renderer, {
-      id: `${this.id}-canvas`,
-      visible: false,
-      zIndex: this.box!.zIndex + 1,
-      position: "absolute",
-      left: 2,
-      top: 2,
-      width: 20 - 8,
-      height: 10 - 4,
-    });
+    this.canvas = new ChartCanvasFrameBuffer(
+      this.renderer,
+      `chart-canvas-${this.id}`,
+    );
+    this.canvas.top = 2;
+    this.canvas.left = 2;
+    this.canvas.width = this.rect.width - 8;
+    this.canvas.height = this.rect.height - 4;
     this.box!.add(this.canvas);
-    // this.renderer.root.add(this.canvas);
   }
 
   override draw(): void {
@@ -47,41 +64,12 @@ export class ChartPane extends Pane {
     console.log();
     console.log(`${this.canvas}`);
 
-    const { top, left, width, height } = this.rect;
-    if (this.canvas) {
-      this.canvas.visible = true;
-      this.canvas.top = 2;
-      this.canvas.left = 2;
-      this.canvas.width = width - 8;
-      this.canvas.height = height - 4;
-      // Update background
-      const buffer = this.canvas.frameBuffer;
-      this.canvas.frameBuffer.fillRect(
-        0,
-        0,
-        buffer.width,
-        buffer.height,
-        RGBA.fromHex(LattePalette.green),
-      );
-      console.log(`${buffer.width}x${buffer.height}`);
+    const { width, height } = this.rect;
 
-      // for (let x = 0; x < buffer.width; x++) {
-      //   buffer.drawText("-", x, 0, RGBA.fromInts(150, 100, 200));
-      //   buffer.drawText(
-      //     "-",
-      //     x,
-      //     buffer.height - 1,
-      //     RGBA.fromInts(150, 100, 200),
-      //   );
-      // }
-      //
-      // for (let y = 0; y < buffer.height; y++) {
-      //   buffer.drawText("|", 0, y, RGBA.fromInts(150, 100, 200));
-      //   buffer.drawText("|", buffer.width - 1, y, RGBA.fromInts(150, 100, 200));
-      // }
-
-      this.canvas?.render(buffer, 0.1);
-    }
+    this.canvas!.top = 2;
+    this.canvas!.left = 2;
+    this.canvas!.width = width - 8;
+    this.canvas!.height = height - 4;
 
     this.setupKeybinds(this.renderer);
   }

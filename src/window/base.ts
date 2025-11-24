@@ -1,9 +1,4 @@
-import {
-  CliRenderer,
-  Box,
-  BoxRenderable,
-  type ProxiedVNode,
-} from "@opentui/core";
+import { CliRenderer, BoxRenderable } from "@opentui/core";
 
 import { LattePalette } from "../palette.ts";
 

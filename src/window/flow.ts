@@ -191,7 +191,7 @@ export class FlowPane extends Pane {
   override draw(): void {
     super.draw();
 
-    const { top, left, width, height } = this.rect;
+    const { width, height } = this.rect;
 
     this.mouseInteractionBuffer!.top = 1;
     this.mouseInteractionBuffer!.left = 1;
