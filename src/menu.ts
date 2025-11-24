@@ -206,6 +206,7 @@ export class MainMenu {
     }
     if (this.selector) {
       this.selector.visible = true;
+      this.selector.focus();
     }
   }
 
