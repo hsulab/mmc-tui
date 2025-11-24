@@ -82,7 +82,6 @@ export class MMCTui {
       this.statusBar,
     );
     this.panes.render();
-    this.panes.setupKeybinds();
 
     // Show status bar
     this.statusBar?.showStatusBar();

@@ -64,7 +64,13 @@ export class PaneLayout {
       width: this.width,
       height: this.height,
     });
-    // Update status bar
+    this.updateStatusBar();
+    if (this.keybinds === null) {
+      this.setupKeybinds();
+    }
+  }
+
+  updateStatusBar() {
     if (this.statusBar) {
       const panes = this.root.collectPanes();
       const activePane = panes.find((p) => p.active);
@@ -137,7 +143,7 @@ export class PaneLayout {
     const activePane = panes.find((p) => p.active);
     if (!activePane) return;
 
-    const newPane = new basicPane(this.renderer, this.generateId(), true);
+    const newPane = new Pane(this.renderer, this.generateId(), true);
 
     activePane.active = false;
 
