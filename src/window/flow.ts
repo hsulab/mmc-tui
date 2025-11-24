@@ -30,16 +30,21 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
   private readonly TRAIL_COLOR = RGBA.fromInts(64, 224, 208, 255);
   private readonly DRAG_COLOR = RGBA.fromInts(255, 165, 0, 255);
   private readonly ACTIVATED_COLOR = RGBA.fromInts(255, 20, 147, 255);
-  private readonly BACKGROUND_COLOR = RGBA.fromHex(LattePalette.overlay2);
   private readonly CURSOR_COLOR = RGBA.fromInts(255, 255, 255, 255);
 
-  constructor(id: string, renderer: CliRenderer) {
+  private BACKGROUND_COLOR = RGBA.fromHex(LattePalette.overlay2);
+
+  constructor(renderer: CliRenderer, id: string, backgroundColor?: RGBA) {
     super(renderer, {
       id,
       width: renderer.terminalWidth,
       height: renderer.terminalHeight,
       zIndex: 100,
     });
+
+    if (backgroundColor) {
+      this.BACKGROUND_COLOR = backgroundColor;
+    }
   }
 
   protected override renderSelf(buffer: OptimizedBuffer): void {
@@ -193,10 +198,10 @@ export class FlowPane extends Pane {
 
     const { width, height } = this.rect;
 
-    this.mouseInteractionBuffer!.top = 1;
-    this.mouseInteractionBuffer!.left = 1;
-    this.mouseInteractionBuffer!.width = width - 4;
-    this.mouseInteractionBuffer!.height = height - 4;
+    this.mouseInteractionBuffer!.top = 0;
+    this.mouseInteractionBuffer!.left = 0;
+    this.mouseInteractionBuffer!.width = width - 2;
+    this.mouseInteractionBuffer!.height = height - 2;
 
     this.setupKeybinds(this.renderer);
   }
@@ -205,13 +210,14 @@ export class FlowPane extends Pane {
     if (this.mouseInteractionBuffer) return;
 
     this.mouseInteractionBuffer = new MouseInteractionFrameBuffer(
-      `${this.id}-mouse-interaction`,
       this.renderer,
+      `${this.id}-mouse-interaction`,
+      RGBA.fromHex(LattePalette.surface0),
     );
-    this.mouseInteractionBuffer.top = 1;
-    this.mouseInteractionBuffer.left = 1;
-    this.mouseInteractionBuffer.width = 20;
-    this.mouseInteractionBuffer.height = 20;
+    this.mouseInteractionBuffer.top = 0;
+    this.mouseInteractionBuffer.left = 0;
+    this.mouseInteractionBuffer.width = this.box!.width - 2;
+    this.mouseInteractionBuffer.height = this.box!.height - 2;
 
     this.box!.add(this.mouseInteractionBuffer);
   }
@@ -234,10 +240,8 @@ export class FlowPane extends Pane {
           const nodeLabel = `node-${this.nodeIndex}`;
           const newBox = DraggableBox({
             id: nodeId,
-            // x: 20 + Math.random() * (this.box.height - 40),
-            // y: 10 + Math.random() * (this.box.width - 10),
-            x: 20,
-            y: 10,
+            x: this.rect.left,
+            y: this.rect.top,
             width: 16,
             height: 4,
             label: nodeLabel,
