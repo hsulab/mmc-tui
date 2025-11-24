@@ -50,7 +50,7 @@ export class Pane extends Node {
       position: "absolute",
       flexGrow: 1,
       title: `${this.type}-${this.id.slice(-12)}`,
-      backgroundColor: this.active ? LattePalette.base : LattePalette.surface0,
+      backgroundColor: this.active ? LattePalette.base : LattePalette.base,
       borderStyle: "rounded",
       borderColor: this.active ? LattePalette.peach : LattePalette.teal,
     });
@@ -71,7 +71,7 @@ export class Pane extends Node {
     this.box.height = height;
     this.box.backgroundColor = this.active
       ? LattePalette.base
-      : LattePalette.surface0;
+      : LattePalette.base;
     this.box.borderStyle = "rounded";
     this.box.borderColor = this.active ? LattePalette.peach : LattePalette.teal;
     console.log(

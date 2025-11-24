@@ -9,65 +9,12 @@ import { Pane, type Rect } from "./base.ts";
 
 import { LattePalette } from "../palette.ts";
 
-class ChartCanvasFrameBuffer extends FrameBufferRenderable {
-  constructor(renderer: CliRenderer, id: string) {
-    super(renderer, {
-      id,
-      width: renderer.terminalWidth,
-      height: renderer.terminalHeight,
-      zIndex: 1,
-    });
-  }
-
-  protected override renderSelf(buffer: OptimizedBuffer): void {
-    this.frameBuffer.clear(RGBA.fromHex(LattePalette.green));
-
-    // Test data points
-    const x0 = 2,
-      y0 = 4;
-    const x1 = 3,
-      y1 = 9;
-
-    // Draw a simple line between two points (Bresenham's line algorithm)
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
-    const sx = x0 < x1 ? 1 : -1;
-    const sy = y0 < y1 ? 1 : -1;
-    let err = dx - dy;
-
-    let x = x0;
-    let y = y0;
-
-    while (true) {
-      this.frameBuffer.setCell(
-        x,
-        y,
-        "•",
-        RGBA.fromHex(LattePalette.peach),
-        RGBA.fromHex(LattePalette.green),
-      );
-
-      if (x === x1 && y === y1) break;
-      const e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        x += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y += sy;
-      }
-    }
-
-    // Final rendering
-    super.renderSelf(buffer);
-  }
-}
+import { ChartCanvasFrameBuffer } from "../chart/canvas.ts";
 
 export class ChartPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
-  private canvas: FrameBufferRenderable | null = null;
+  private canvas: ChartCanvasFrameBuffer | null = null;
 
   constructor(
     renderer: CliRenderer,
@@ -89,12 +36,23 @@ export class ChartPane extends Pane {
 
     this.canvas = new ChartCanvasFrameBuffer(
       this.renderer,
-      `chart-canvas-${this.id}`,
+      {
+        id: `chart-canvas-${this.id}`,
+        width: this.rect.width - 8,
+        height: this.rect.height - 4,
+      },
+      RGBA.fromHex(LattePalette.surface0),
     );
     this.canvas.top = 2;
     this.canvas.left = 2;
     this.canvas.width = this.rect.width - 8;
     this.canvas.height = this.rect.height - 4;
+    this.canvas.setPlotFunction((x: number) => x * x * x, {
+      xMin: -1,
+      xMax: 1,
+      backgroundColor: RGBA.fromHex(LattePalette.surface0),
+      color: RGBA.fromHex(LattePalette.red),
+    });
     this.box!.add(this.canvas);
   }
 
@@ -109,6 +67,8 @@ export class ChartPane extends Pane {
     this.canvas!.left = 2;
     this.canvas!.width = width - 8;
     this.canvas!.height = height - 4;
+
+    this.canvas!.renderPlot();
 
     this.setupKeybinds(this.renderer);
   }
