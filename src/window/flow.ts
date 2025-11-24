@@ -6,9 +6,9 @@ import {
   RGBA,
   CliRenderer,
   BoxRenderable,
-  FrameBuffer,
   FrameBufferRenderable,
   OptimizedBuffer,
+  MouseEvent,
 } from "@opentui/core";
 
 import { Pane } from "./base.ts";
@@ -29,7 +29,7 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
   private readonly TRAIL_COLOR = RGBA.fromInts(64, 224, 208, 255);
   private readonly DRAG_COLOR = RGBA.fromInts(255, 165, 0, 255);
   private readonly ACTIVATED_COLOR = RGBA.fromInts(255, 20, 147, 255);
-  private readonly BACKGROUND_COLOR = RGBA.fromInts(15, 15, 35, 255);
+  private readonly BACKGROUND_COLOR = RGBA.fromHex(LattePalette.overlay2);
   private readonly CURSOR_COLOR = RGBA.fromInts(255, 255, 255, 255);
 
   constructor(id: string, renderer: CliRenderer) {
@@ -82,8 +82,8 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
 
       this.frameBuffer.drawText(
         "█",
-        x,
-        y,
+        x!,
+        y!,
         this.ACTIVATED_COLOR,
         this.BACKGROUND_COLOR,
       );
@@ -96,8 +96,8 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
     if (recentTrails.length > 0) {
       const latest = recentTrails[0];
       this.frameBuffer.setCellWithAlphaBlending(
-        latest.x,
-        latest.y,
+        latest!.x,
+        latest!.y,
         "+",
         this.CURSOR_COLOR,
         this.BACKGROUND_COLOR,
@@ -195,10 +195,6 @@ export class FlowPane extends Pane {
           `${this.id}-mouse-interaction`,
           renderer,
         );
-        // mouseInteractionContainer = new BoxRenderable(renderer, {
-        //   id: `${this.id}-mouse-interaction`,
-        //   backgroundColor: LattePalette.overlay2,
-        // });
         mouseInteractionContainer.zIndex = 100;
         mouseInteractionContainer.top = 1;
         mouseInteractionContainer.left = 1;
