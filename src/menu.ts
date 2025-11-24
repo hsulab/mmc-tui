@@ -1,12 +1,9 @@
 import {
   BoxRenderable,
-  TextRenderable,
   ASCIIFontRenderable,
   SelectRenderable,
   SelectRenderableEvents,
   CliRenderer,
-  t,
-  fg,
   type SelectOption,
 } from "@opentui/core";
 
@@ -127,67 +124,10 @@ export class MainMenu {
     });
     this.container.add(this.selector);
 
-    const selectedDisplay = new TextRenderable(renderer, {
-      id: "main-menu-selection-display",
-      content: "",
-      fg: LattePalette.text,
-      bg: LattePalette.base,
-      position: "absolute",
-      top: 30,
-      left: 12,
-      width: 50,
-      height: 3,
-      zIndex: 0,
-    });
-    this.container.add(selectedDisplay);
-
-    let lastActionColor: string = LattePalette.red;
-
-    const activatedDisplay = new TextRenderable(renderer, {
-      id: "main-menu-selection-display",
-      content: "jijiji",
-      fg: lastActionColor,
-      bg: LattePalette.base,
-      position: "absolute",
-      top: 36,
-      left: 12,
-      width: 50,
-      height: 3,
-      zIndex: 0,
-    });
-    this.container.add(activatedDisplay);
-
-    this.selector.on(
-      SelectRenderableEvents.SELECTION_CHANGED,
-      (_: number, option: SelectOption) => {
-        const currentSelection = this.selector!.getSelectedOption();
-        const selectionText = currentSelection
-          ? `Selected: ${currentSelection.name}`
-          : "Selected: None";
-
-        if (selectedDisplay) {
-          selectedDisplay.content = selectionText;
-        }
-
-        console.log(`Menu selection changed to: ${option.name}`);
-      },
-    );
-
     this.selector.on(
       SelectRenderableEvents.ITEM_SELECTED,
       (_: number, option: SelectOption) => {
-        // selector.blur(); // Blur the selector on item selection
-        const currentActivationText = `*** ACTIVATED: ${option.name} (${option.value}) ***`;
-        lastActionColor = LattePalette.flamingo;
-        if (activatedDisplay) {
-          activatedDisplay.content = t`${fg(lastActionColor)(currentActivationText)}`;
-        }
-        setTimeout(() => {
-          lastActionColor = LattePalette.green;
-          if (activatedDisplay) {
-            activatedDisplay.content = t`${fg(lastActionColor)(currentActivationText)}`;
-          }
-        }, 1000);
+        this.selector!.blur(); // Blur the selector on item selection
         console.log(`Menu item activated: ${option.name}`);
         // Deal with the action here
         this.onAction(option.value);
@@ -222,6 +162,30 @@ export class MainMenu {
     }
     // Trigger a re-render so the hidden menu components are cleared from the screen
     // before other UI elements (like the window manager) draw over the same area.
+    this.renderer.requestRender();
+  }
+
+  public destroyMenuComponents() {
+    if (this.appName) {
+      this.appName.destroy();
+    }
+    if (this.selector) {
+      this.selector.destroy();
+    }
+    if (this.container) {
+      this.container.destroy();
+      this.renderer.root.remove(this.container.id);
+    }
+
+    this.container = null;
+    this.selector = null;
+    this.appName = null;
+
+    const children = this.renderer.root.getChildren();
+    for (const child of children) {
+      console.log(`Remaining child in root: ${typeof child}  ${child.id}`);
+    }
+
     this.renderer.requestRender();
   }
 }
