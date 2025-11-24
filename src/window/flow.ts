@@ -163,6 +163,8 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
 }
 
 export class FlowPane extends Pane {
+  private keybinds: ((key: any) => void) | null = null;
+
   constructor(id: string, active: boolean = false) {
     super(id, active);
   }
@@ -211,5 +213,26 @@ export class FlowPane extends Pane {
         mouseInteractionContainer.height = rect.height - 4;
       }
     }
+
+    this.setupKeybinds(renderer);
+  }
+
+  public setupKeybinds(renderer: CliRenderer): void {
+    if (this.keybinds) return;
+
+    this.keybinds = (key: any) => {
+      if (!this.active) return;
+
+      // Example keybinds for demonstration
+      switch (key.name) {
+        case "x":
+          if (key.ctrl) {
+            console.log(`Ctrl+X pressed in FlowPane ${this.id}`);
+          }
+          break;
+      }
+    };
+
+    renderer.keyInput.on("keypress", this.keybinds);
   }
 }
