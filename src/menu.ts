@@ -73,8 +73,6 @@ export class MainMenu {
     this._height = value;
   }
 
-  private createAppName() {}
-
   public createMenu() {
     const renderer = this.renderer;
     // Check if main menu already exists
