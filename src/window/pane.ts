@@ -3,11 +3,14 @@ import { BoxRenderable, CliRenderer } from "@opentui/core";
 import { type Rect, type Direction, Node, Pane, Split } from "./base.ts";
 import { FlowPane } from "./flow.ts";
 
+import { StatusBar } from "../status.ts";
+
 const basicPane = Pane;
 
 export class PaneLayout {
   private renderer: CliRenderer;
   private keybinds: ((key: any) => void) | null = null;
+  private statusBar: StatusBar | null = null;
 
   private root: Node;
   private prev: Node | null = null;
@@ -15,11 +18,18 @@ export class PaneLayout {
   private _width: number;
   private _height: number;
 
-  constructor(renderer: CliRenderer, width: number, height: number) {
+  constructor(
+    renderer: CliRenderer,
+    width: number,
+    height: number,
+    statusBar: StatusBar | null = null,
+  ) {
     this.renderer = renderer;
 
     this._width = width;
     this._height = height;
+
+    this.statusBar = statusBar;
 
     this.root = new basicPane(this.renderer, this.generateId(), true);
     this.root.collectPanes().forEach((p) => renderer.root.add(p.box));
@@ -53,6 +63,16 @@ export class PaneLayout {
       width: this.width,
       height: this.height,
     });
+    // Update status bar
+    if (this.statusBar) {
+      const panes = this.root.collectPanes();
+      const activePane = panes.find((p) => p.active);
+      this.statusBar.updateStatus(
+        ` Panes: ${panes.length} | Active Pane: ${
+          activePane ? activePane.id.slice(-12) : "None"
+        } `,
+      );
+    }
   }
 
   destroy() {

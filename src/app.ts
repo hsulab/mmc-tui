@@ -3,6 +3,7 @@ import { CliRenderer } from "@opentui/core";
 import { LattePalette } from "./palette.ts";
 import { PaneLayout } from "./window/pane.ts";
 import { MainMenu } from "./menu.ts";
+import { StatusBar } from "./status.ts";
 
 export class MMCTui {
   private renderer: CliRenderer;
@@ -10,6 +11,9 @@ export class MMCTui {
 
   // My menu components
   private mainMenu: MainMenu | null = null;
+
+  // My status bar components
+  private statusBar: StatusBar | null = null;
 
   // My window components
   private panes: PaneLayout | null = null;
@@ -30,12 +34,20 @@ export class MMCTui {
     );
     this.mainMenu.createMenu();
 
+    // Setup status bar
+    this.statusBar = new StatusBar(
+      this.renderer,
+      this.renderer.width,
+      this.renderer.height,
+    );
+    this.statusBar.createStatusBar();
+
     // Resize event
     this.renderer.on("resize", (width: number, height: number) => {
       // Resize panes
       if (this.panes) {
         this.panes.width = width;
-        this.panes.height = height;
+        this.panes.height = height - 1; // Leave space for status bar
         this.panes.render();
       }
     });
@@ -66,10 +78,14 @@ export class MMCTui {
     this.panes = new PaneLayout(
       this.renderer,
       this.renderer.width,
-      this.renderer.height,
+      this.renderer.height - 1, // Leave space for status bar
+      this.statusBar,
     );
     this.panes.render();
     this.panes.setupKeybinds();
+
+    // Show status bar
+    this.statusBar?.showStatusBar();
   }
 
   private returnToMenu() {
@@ -79,6 +95,9 @@ export class MMCTui {
       this.panes.destroy();
       this.panes = null;
     }
+    // Hide status bar
+    this.statusBar?.hideStatusBar();
+    // Show main menu
     if (this.mainMenu) {
       this.mainMenu.showMenuComponents();
     }
