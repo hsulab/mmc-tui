@@ -250,6 +250,12 @@ export class FlowPane extends Pane {
           this.nodeIndex += 1;
           console.log(`New node created in FlowPane ${this.id}`);
           break;
+        case "t": // Update color of all boxes
+          this.boxes.forEach((box) => {
+            box.backgroundColor = RGBA.fromHex(LattePalette.peach);
+          });
+          console.log(`All node colors updated in FlowPane ${this.id}`);
+          break;
         default:
           break;
       }
