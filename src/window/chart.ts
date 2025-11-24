@@ -43,11 +43,11 @@ export class ChartPane extends Pane {
       },
       RGBA.fromHex(LattePalette.surface0),
     );
-    this.canvas.top = 2;
-    this.canvas.left = 2;
-    this.canvas.width = this.rect.width - 8;
-    this.canvas.height = this.rect.height - 4;
-    this.canvas.setPlotFunction((x: number) => x * x * x, {
+    this.canvas.top = 0;
+    this.canvas.left = 0;
+    this.canvas.width = this.rect.width - 2;
+    this.canvas.height = this.rect.height - 2;
+    this.canvas.setPlotFunction((x: number) => x * x + x, {
       xMin: -1,
       xMax: 1,
       backgroundColor: RGBA.fromHex(LattePalette.surface0),
@@ -63,10 +63,10 @@ export class ChartPane extends Pane {
 
     const { width, height } = this.rect;
 
-    this.canvas!.top = 2;
-    this.canvas!.left = 2;
-    this.canvas!.width = width - 8;
-    this.canvas!.height = height - 4;
+    this.canvas!.top = 0;
+    this.canvas!.left = 0;
+    this.canvas!.width = width - 2;
+    this.canvas!.height = height - 2;
 
     this.canvas!.renderPlot();
 
