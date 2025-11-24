@@ -13,6 +13,8 @@ export class PaneLayout {
   private keybinds: ((key: any) => void) | null = null;
   private statusBar: StatusBar | null = null;
 
+  private windowContainer: BoxRenderable | null = null;
+
   private root: Node;
   private prev: Node | null = null;
 
@@ -32,8 +34,21 @@ export class PaneLayout {
 
     this.statusBar = statusBar;
 
+    this.windowContainer = new BoxRenderable(this.renderer, {
+      id: "window-container",
+      top: 0,
+      left: 0,
+      width: this._width,
+      height: this._height,
+      zIndex: 0,
+      visible: true,
+      position: "absolute",
+      flexGrow: 1,
+    });
+    this.renderer.root.add(this.windowContainer);
+
     this.root = new basicPane(this.renderer, this.generateId(), true);
-    this.root.collectPanes().forEach((p) => renderer.root.add(p.box));
+    this.root.collectPanes().forEach((p) => this.windowContainer!.add(p.box));
   }
 
   get width(): number {
@@ -97,7 +112,7 @@ export class PaneLayout {
       if ("destroy" in p) {
         (p as any).destroy();
       } else {
-        this.renderer.root.remove(p.id);
+        this.windowContainer!.remove(p.id);
       }
     });
   }
@@ -112,9 +127,9 @@ export class PaneLayout {
       }
       if (key.name === "q" && key.ctrl) {
         let ids: string[] = [];
-        ids = this.renderer.root.getChildren().map((child) => child.id);
+        ids = this.windowContainer!.getChildren().map((child) => child.id);
         this.closeActive();
-        ids = this.renderer.root.getChildren().map((child) => child.id);
+        ids = this.windowContainer!.getChildren().map((child) => child.id);
       }
       if (key.name === "linefeed") {
         // crtl + j
@@ -153,7 +168,7 @@ export class PaneLayout {
       new Split(direction, 0.5, activePane, newPane),
     );
 
-    this.renderer.root.add(newPane.box);
+    this.windowContainer!.add(newPane.box);
 
     this.render();
   }
@@ -170,7 +185,7 @@ export class PaneLayout {
     const sibling = isLeft ? (parent as Split).b : (parent as Split).a;
 
     // TODO: need cleanup func
-    this.renderer.root.remove(activePane.id);
+    this.windowContainer!.remove(activePane.id);
 
     this.root = this.replaceNode(this.root, parent, sibling);
     if (sibling instanceof Pane) {
@@ -227,7 +242,7 @@ export class PaneLayout {
       this.root = activePane;
       panes.forEach((p) => {
         if (p !== activePane) {
-          const r = this.renderer.root.getRenderable(p.id);
+          const r = this.windowContainer!.getRenderable(p.id);
           if (r) r.visible = false;
         }
       });
@@ -236,7 +251,7 @@ export class PaneLayout {
       this.prev = null;
       panes.forEach((p) => {
         if (p !== activePane) {
-          const r = this.renderer.root.getRenderable(p.id);
+          const r = this.windowContainer!.getRenderable(p.id);
           if (r) r.visible = true;
         }
       });
@@ -295,7 +310,9 @@ function buildPaneNeighbors(
 ): Map<Pane, PaneNeighbors> {
   const infos: PaneRectInfo[] = [];
   for (const pane of panes) {
-    let box = renderer.root.getRenderable(pane.id);
+    let box = renderer.root
+      .getRenderable("window-container")
+      ?.getRenderable(pane.id);
     if (box instanceof BoxRenderable) {
       infos.push({
         pane,
