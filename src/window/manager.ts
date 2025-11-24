@@ -6,8 +6,6 @@ import { ChartPane } from "./chart.ts";
 
 import { StatusBar } from "../status.ts";
 
-const basicPane = ChartPane;
-
 export class LayoutManager {
   private renderer: CliRenderer;
   private keybinds: ((key: any) => void) | null = null;
@@ -47,7 +45,7 @@ export class LayoutManager {
     });
     this.renderer.root.add(this.windowContainer);
 
-    this.root = new basicPane(this.renderer, this.generateId(), true, {
+    this.root = new FlowPane(this.renderer, this.generateId(), true, {
       top: 0,
       left: 0,
       width: this._width,
@@ -180,7 +178,7 @@ export class LayoutManager {
     }
 
     activePane.rect = rectLeft;
-    const newPane = new FlowPane(
+    const newPane = new ChartPane(
       this.renderer,
       this.generateId(),
       true,
