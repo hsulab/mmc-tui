@@ -165,8 +165,12 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
+  private mouseInteractionBuffer: MouseInteractionFrameBuffer | null = null;
+
   constructor(renderer: CliRenderer, id: string, active: boolean = false) {
     super(renderer, id, active);
+
+    this.createMouseInteractionBuffer();
   }
 
   override get type(): string {
@@ -181,42 +185,27 @@ export class FlowPane extends Pane {
   }): void {
     super.draw(rect);
 
-    let box = this.renderer.root.getRenderable(this.id);
-    if (box instanceof BoxRenderable) {
-      console.log(`Drawing FlowPane ${this.id}`);
-      let mouseInteractionContainer = box.getRenderable(
-        `${this.id}-mouse-interaction`,
-      );
-      console.log(
-        `Current FlowPane ${box.getChildrenCount()}:`,
-        mouseInteractionContainer,
-      );
-      if (!(mouseInteractionContainer instanceof MouseInteractionFrameBuffer)) {
-        console.log(
-          `Adding MouseInteractionFrameBuffer to FlowPane ${this.id}`,
-        );
-        mouseInteractionContainer = new MouseInteractionFrameBuffer(
-          `${this.id}-mouse-interaction`,
-          this.renderer,
-        );
-        mouseInteractionContainer.zIndex = 100;
-        mouseInteractionContainer.top = 1;
-        mouseInteractionContainer.left = 1;
-        mouseInteractionContainer.width = rect.width - 4;
-        mouseInteractionContainer.height = rect.height - 4;
-        box.add(mouseInteractionContainer);
-      } else {
-        console.log(
-          `Updating MouseInteractionFrameBuffer size for FlowPane ${this.id}`,
-        );
-        mouseInteractionContainer.top = 1;
-        mouseInteractionContainer.left = 1;
-        mouseInteractionContainer.width = rect.width - 4;
-        mouseInteractionContainer.height = rect.height - 4;
-      }
-    }
+    this.mouseInteractionBuffer!.top = 1;
+    this.mouseInteractionBuffer!.left = 1;
+    this.mouseInteractionBuffer!.width = rect.width - 4;
+    this.mouseInteractionBuffer!.height = rect.height - 4;
 
     this.setupKeybinds(this.renderer);
+  }
+
+  private createMouseInteractionBuffer(): void {
+    if (this.mouseInteractionBuffer) return;
+
+    this.mouseInteractionBuffer = new MouseInteractionFrameBuffer(
+      `${this.id}-mouse-interaction`,
+      this.renderer,
+    );
+    this.mouseInteractionBuffer.top = 1;
+    this.mouseInteractionBuffer.left = 1;
+    this.mouseInteractionBuffer.width = 20;
+    this.mouseInteractionBuffer.height = 20;
+
+    this.box.add(this.mouseInteractionBuffer);
   }
 
   public setupKeybinds(renderer: CliRenderer): void {
