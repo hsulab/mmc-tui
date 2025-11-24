@@ -88,7 +88,11 @@ export class PaneLayout {
     // TODO: Remove all panes from renderer properly
     const panes = this.root.collectPanes();
     panes.forEach((p) => {
-      this.renderer.root.remove(p.id);
+      if ("destroy" in p) {
+        (p as any).destroy();
+      } else {
+        this.renderer.root.remove(p.id);
+      }
     });
   }
 
