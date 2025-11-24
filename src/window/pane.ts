@@ -5,7 +5,7 @@ import { FlowPane } from "./flow.ts";
 
 import { StatusBar } from "../status.ts";
 
-const basicPane = Pane;
+const basicPane = FlowPane;
 
 export class PaneLayout {
   private renderer: CliRenderer;

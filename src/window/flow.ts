@@ -166,11 +166,14 @@ export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
   private mouseInteractionBuffer: MouseInteractionFrameBuffer | null = null;
+  private boxes: BoxRenderable[] = [];
 
   constructor(renderer: CliRenderer, id: string, active: boolean = false) {
     super(renderer, id, active);
 
     this.createMouseInteractionBuffer();
+
+    this.boxes = []; // TODO: If we have some init nodes?
   }
 
   override get type(): string {
@@ -220,6 +223,24 @@ export class FlowPane extends Pane {
           if (key.ctrl) {
             console.log(`Ctrl+X pressed in FlowPane ${this.id}`);
           }
+          break;
+        case "n": // Create new node
+          const newBox = new BoxRenderable(renderer, {
+            position: "absolute",
+            top: 20 + Math.random() * (this.box.height - 40),
+            left: 10 + Math.random() * (this.box.width - 10),
+            width: 8,
+            height: 4,
+            title: "Node",
+            borderColor: LattePalette.teal,
+            backgroundColor: LattePalette.surface1,
+            zIndex: 100,
+          });
+          this.box.add(newBox);
+          this.boxes.push(newBox);
+          console.log(`New node created in FlowPane ${this.id}`);
+          break;
+        default:
           break;
       }
     };
