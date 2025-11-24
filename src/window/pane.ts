@@ -67,11 +67,13 @@ export class PaneLayout {
     if (this.statusBar) {
       const panes = this.root.collectPanes();
       const activePane = panes.find((p) => p.active);
-      this.statusBar.updateStatus(
-        ` Panes: ${panes.length} | Active Pane: ${
-          activePane ? activePane.id.slice(-12) : "None"
-        } `,
-      );
+      let message = ` Panes: ${panes.length} | Active Pane: ${
+        activePane ? activePane.id.slice(-12) : "None"
+      } `;
+      if ("boxes" in activePane!) {
+        message += `| Nodes: ${activePane.boxes.length} `;
+      }
+      this.statusBar.updateStatus(message);
     }
   }
 

@@ -169,6 +169,8 @@ export class FlowPane extends Pane {
   private mouseInteractionBuffer: MouseInteractionFrameBuffer | null = null;
   private boxes: BoxRenderable[] = [];
 
+  private nodeIndex: number = 0;
+
   constructor(renderer: CliRenderer, id: string, active: boolean = false) {
     super(renderer, id, active);
 
@@ -226,29 +228,26 @@ export class FlowPane extends Pane {
           }
           break;
         case "n": // Create new node
-          // const newBox = new BoxRenderable(renderer, {
-          //   position: "absolute",
-          //   top: 20 + Math.random() * (this.box.height - 40),
-          //   left: 10 + Math.random() * (this.box.width - 10),
-          //   width: 8,
-          //   height: 4,
-          //   title: "Node",
-          //   borderColor: LattePalette.teal,
-          //   backgroundColor: LattePalette.surface1,
-          //   zIndex: 100,
-          // });
+          const nodeId = `node-${this.id}-${this.nodeIndex}`;
+          const nodeLabel = `node-${this.nodeIndex}`;
           const newBox = DraggableBox({
+            id: nodeId,
             // x: 20 + Math.random() * (this.box.height - 40),
             // y: 10 + Math.random() * (this.box.width - 10),
             x: 20,
             y: 10,
             width: 16,
             height: 4,
-            label: "Node",
+            label: nodeLabel,
             color: RGBA.fromHex(LattePalette.teal),
           });
           this.box.add(newBox);
-          // this.boxes.push(newBox);
+          // Get the created BoxRenderable from the box
+          const nodeBox = this.box
+            .getChildren()
+            .find((child) => child.id === nodeId) as BoxRenderable;
+          this.boxes.push(nodeBox);
+          this.nodeIndex += 1;
           console.log(`New node created in FlowPane ${this.id}`);
           break;
         default:
