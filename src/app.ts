@@ -41,12 +41,14 @@ export class MMCTui {
   private mainMenuSelector: SelectRenderable | null = null;
 
   // My window components
+  private panes: PaneLayout | null = null;
 
   constructor(renderer: CliRenderer) {
     this.renderer = renderer;
 
     this.renderer.setBackgroundColor(LattePalette.base);
 
+    this.setupGlobalKeybinds();
     this.createMenu();
   }
 
@@ -187,13 +189,13 @@ export class MMCTui {
     this.hideMenuComponents();
 
     // Start the window manager
-    const panes = new PaneLayout(
+    this.panes = new PaneLayout(
       this.renderer,
       this.renderer.width,
       this.renderer.height,
     );
-    panes.render();
-    panes.setupKeybinds();
+    this.panes.render();
+    this.panes.setupKeybinds();
   }
 
   private hideMenuComponents() {
@@ -206,5 +208,37 @@ export class MMCTui {
     if (this.mainMenuSelector) {
       this.mainMenuSelector.visible = false;
     }
+  }
+
+  private returnToMenu() {
+    this.inMenu = true;
+    if (this.panes) {
+      // Clean up panes
+      this.panes.destroy();
+      this.panes = null;
+    }
+    if (this.appName) {
+      this.appName.visible = true;
+    }
+    if (this.mainMenuContainer) {
+      this.mainMenuContainer.visible = true;
+    }
+    if (this.mainMenuSelector) {
+      this.mainMenuSelector.visible = true;
+      this.mainMenuSelector.focus();
+    }
+  }
+
+  private setupGlobalKeybinds() {
+    this.renderer.keyInput.on("keypress", (key) => {
+      if (key.name === "m" && key.ctrl) {
+        if (this.inMenu) {
+          // Already in menu
+          return;
+        } else {
+          this.returnToMenu();
+        }
+      }
+    });
   }
 }

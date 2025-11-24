@@ -53,6 +53,20 @@ export class PaneLayout {
     });
   }
 
+  destroy() {
+    // Remove keybinds
+    if (this.keybinds) {
+      this.renderer.keyInput.off("keypress", this.keybinds);
+      this.keybinds = null;
+    }
+
+    // TODO: Remove all panes from renderer properly
+    const panes = this.root.collectPanes();
+    panes.forEach((p) => {
+      this.renderer.root.remove(p.id);
+    });
+  }
+
   setupKeybinds() {
     this.keybinds = (key: any) => {
       if (key.name === "v" && key.ctrl) {
