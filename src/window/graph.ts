@@ -27,7 +27,7 @@ export function DraggableBox(
     props.color.r,
     props.color.g,
     props.color.b,
-    0.8,
+    0.0,
   );
   const borderColor = RGBA.fromValues(
     props.color.r * 1.2,
