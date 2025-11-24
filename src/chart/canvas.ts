@@ -15,6 +15,7 @@ type PlotConfig = {
   step?: number;
   color?: RGBA;
   backgroundColor?: RGBA;
+  axisColor?: RGBA;
 };
 
 const BRAILLE_BASE = 0x2800;
@@ -51,6 +52,7 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     const xMax = config.xMax;
     const step = config.step ?? (xMax - xMin) / this.pixelWidth;
     const fg = config.color ?? RGBA.fromHex(LattePalette.blue);
+    const axisColor = config.axisColor ?? RGBA.fromHex(LattePalette.text);
     this.backgroundColor = config.backgroundColor ?? this.backgroundColor;
 
     this.resetBraille();
@@ -67,6 +69,8 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
       minY -= 1;
       maxY += 1;
     }
+
+    this.drawAxes(xMin, xMax, minY, maxY, axisColor);
 
     for (const sample of samples) {
       const pixelX = Math.round(
@@ -142,5 +146,52 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
 
   private get pixelHeight(): number {
     return this.height * BRAILLE_HEIGHT;
+  }
+  private drawAxes(
+    xMin: number,
+    xMax: number,
+    yMin: number,
+    yMax: number,
+    axisColor: RGBA,
+  ) {
+    const hasYAxis = xMin <= 0 && xMax >= 0;
+    const hasXAxis = yMin <= 0 && yMax >= 0;
+
+    if (!hasYAxis && !hasXAxis) return;
+
+    const mapXToPixel = (x: number) =>
+      Math.round(((x - xMin) / (xMax - xMin)) * (this.pixelWidth - 1));
+    const mapYToPixel = (y: number) =>
+      Math.round((1 - (y - yMin) / (yMax - yMin)) * (this.pixelHeight - 1));
+
+    const originPixelX = mapXToPixel(0);
+    const originPixelY = mapYToPixel(0);
+
+    const originCellX = Math.floor(originPixelX / BRAILLE_WIDTH);
+    const originCellY = Math.floor(originPixelY / BRAILLE_HEIGHT);
+
+    if (hasXAxis) {
+      for (let cellX = 0; cellX < this.width; cellX++) {
+        this.frameBuffer.setCell(
+          cellX,
+          originCellY,
+          ".",
+          axisColor,
+          this.backgroundColor,
+        );
+      }
+    }
+
+    if (hasYAxis) {
+      for (let cellY = 0; cellY < this.height; cellY++) {
+        this.frameBuffer.setCell(
+          originCellX,
+          cellY,
+          ".",
+          axisColor,
+          this.backgroundColor,
+        );
+      }
+    }
   }
 }
