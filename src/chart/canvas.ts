@@ -18,25 +18,43 @@ type PlotConfig = {
   axisColor?: RGBA;
 };
 
+type ChartCanvasOptions = FrameBufferOptions & { useBraille?: boolean };
+
 const BRAILLE_BASE = 0x2800;
 const BRAILLE_WIDTH = 2;
 const BRAILLE_HEIGHT = 4;
 
 export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
-  private brailleCells: Uint8Array;
+  private brailleCells: Uint8Array | null;
   private backgroundColor: RGBA;
   private plotDefinition: { fn: PlotFunction; config: PlotConfig } | null =
     null;
+  private useBraille: boolean;
 
   constructor(
     renderer: CliRenderer,
-    options: FrameBufferOptions,
+    options: ChartCanvasOptions,
     backgroundColor: RGBA = RGBA.fromHex(LattePalette.base),
   ) {
     super(renderer, options);
     this.backgroundColor = backgroundColor;
-    this.brailleCells = new Uint8Array(this.width * this.height);
+    this.useBraille = options.useBraille ?? true;
+    this.brailleCells = this.useBraille
+      ? new Uint8Array(this.width * this.height)
+      : null;
     this.fillBackground();
+  }
+
+  public setUseBraille(useBraille: boolean) {
+    if (this.useBraille === useBraille) return;
+
+    this.useBraille = useBraille;
+    this.resetBuffers();
+    this.renderPlot();
+  }
+
+  public isUsingBraille() {
+    return this.useBraille;
   }
 
   public setPlotFunction(fn: PlotFunction, config: PlotConfig) {
@@ -55,7 +73,7 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     const axisColor = config.axisColor ?? RGBA.fromHex(LattePalette.text);
     this.backgroundColor = config.backgroundColor ?? this.backgroundColor;
 
-    this.resetBraille();
+    this.resetBuffers();
 
     const samples: Array<{ x: number; y: number }> = [];
     for (let x = xMin; x <= xMax; x += step) {
@@ -79,18 +97,20 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
       const pixelY = Math.round(
         (1 - (sample.y - minY) / (maxY - minY)) * (this.pixelHeight - 1),
       );
-      this.setBraillePixel(pixelX, pixelY, fg);
+      this.setPixel(pixelX, pixelY, fg);
     }
   }
 
   protected override onResize(width: number, height: number): void {
     super.onResize(width, height);
-    this.resetBraille();
+    this.resetBuffers();
     this.renderPlot();
   }
 
-  private resetBraille() {
-    this.brailleCells = new Uint8Array(this.width * this.height);
+  private resetBuffers() {
+    this.brailleCells = this.useBraille
+      ? new Uint8Array(this.width * this.height)
+      : null;
     this.fillBackground();
   }
 
@@ -104,32 +124,46 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     );
   }
 
-  private setBraillePixel(x: number, y: number, fg: RGBA) {
-    const cellX = Math.floor(x / BRAILLE_WIDTH);
-    const cellY = Math.floor(y / BRAILLE_HEIGHT);
+  private setPixel(x: number, y: number, fg: RGBA) {
+    if (this.useBraille) {
+      const cellX = Math.floor(x / BRAILLE_WIDTH);
+      const cellY = Math.floor(y / BRAILLE_HEIGHT);
 
-    if (cellX < 0 || cellY < 0 || cellX >= this.width || cellY >= this.height) {
+      if (
+        cellX < 0 ||
+        cellY < 0 ||
+        cellX >= this.width ||
+        cellY >= this.height
+      ) {
+        return;
+      }
+
+      const dotX = x % BRAILLE_WIDTH;
+      const dotY = y % BRAILLE_HEIGHT;
+
+      const brailleIndex = this.getBrailleIndex(dotX, dotY);
+      const bufferIndex = cellY * this.width + cellX;
+
+      this.brailleCells![bufferIndex]! |= brailleIndex;
+
+      const brailleChar = String.fromCharCode(
+        BRAILLE_BASE + this.brailleCells![bufferIndex]!,
+      );
+      this.frameBuffer.setCell(
+        cellX,
+        cellY,
+        brailleChar,
+        fg,
+        this.backgroundColor,
+      );
       return;
     }
 
-    const dotX = x % BRAILLE_WIDTH;
-    const dotY = y % BRAILLE_HEIGHT;
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+      return;
+    }
 
-    const brailleIndex = this.getBrailleIndex(dotX, dotY);
-    const bufferIndex = cellY * this.width + cellX;
-
-    this.brailleCells[bufferIndex]! |= brailleIndex;
-
-    const brailleChar = String.fromCharCode(
-      BRAILLE_BASE + this.brailleCells[bufferIndex]!,
-    );
-    this.frameBuffer.setCell(
-      cellX,
-      cellY,
-      brailleChar,
-      fg,
-      this.backgroundColor,
-    );
+    this.frameBuffer.setCell(x, y, "•", fg, this.backgroundColor);
   }
 
   private getBrailleIndex(dotX: number, dotY: number): number {
@@ -141,12 +175,13 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
   }
 
   private get pixelWidth(): number {
-    return this.width * BRAILLE_WIDTH;
+    return this.useBraille ? this.width * BRAILLE_WIDTH : this.width;
   }
 
   private get pixelHeight(): number {
-    return this.height * BRAILLE_HEIGHT;
+    return this.useBraille ? this.height * BRAILLE_HEIGHT : this.height;
   }
+
   private drawAxes(
     xMin: number,
     xMax: number,
@@ -167,8 +202,12 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     const originPixelX = mapXToPixel(0);
     const originPixelY = mapYToPixel(0);
 
-    const originCellX = Math.floor(originPixelX / BRAILLE_WIDTH);
-    const originCellY = Math.floor(originPixelY / BRAILLE_HEIGHT);
+    const originCellX = this.useBraille
+      ? Math.floor(originPixelX / BRAILLE_WIDTH)
+      : originPixelX;
+    const originCellY = this.useBraille
+      ? Math.floor(originPixelY / BRAILLE_HEIGHT)
+      : originPixelY;
 
     if (hasXAxis) {
       for (let cellX = 0; cellX < this.width; cellX++) {

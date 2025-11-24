@@ -15,6 +15,7 @@ export class ChartPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
   private canvas: ChartCanvasFrameBuffer | null = null;
+  private preferBraille: boolean = false;
 
   constructor(
     renderer: CliRenderer,
@@ -40,6 +41,7 @@ export class ChartPane extends Pane {
         id: `chart-canvas-${this.id}`,
         width: this.rect.width - 8,
         height: this.rect.height - 4,
+        useBraille: this.preferBraille,
       },
       RGBA.fromHex(LattePalette.surface0),
     );
@@ -84,6 +86,17 @@ export class ChartPane extends Pane {
         case "x":
           if (key.ctrl) {
             console.log(`Ctrl+X pressed in Chart ${this.id}`);
+          }
+          break;
+        case "b":
+          if (key.ctrl) {
+            this.preferBraille = !this.preferBraille;
+            this.canvas?.setUseBraille(this.preferBraille);
+            console.log(
+              `Chart ${this.id} now using ${
+                this.preferBraille ? "braille" : "block"
+              } rendering`,
+            );
           }
           break;
         case "n": // Create new chart element
