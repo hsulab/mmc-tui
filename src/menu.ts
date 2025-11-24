@@ -89,7 +89,7 @@ export class MainMenu {
       left: 25,
       flexDirection: "row",
       alignItems: "stretch",
-      zIndex: 10,
+      zIndex: 0,
     });
     renderer.root.add(this.container);
 
@@ -99,7 +99,7 @@ export class MainMenu {
       font: "tiny",
       color: LattePalette.text,
       backgroundColor: LattePalette.base,
-      zIndex: 100,
+      zIndex: 0,
       selectable: false,
     });
     this.container.add(this.appName);
@@ -113,7 +113,7 @@ export class MainMenu {
       width: 50,
       height: 2 * selectOptions.length,
       options: selectOptions,
-      zIndex: 1000,
+      zIndex: 0,
       backgroundColor: LattePalette.base,
       focusedBackgroundColor: LattePalette.mantle,
       textColor: LattePalette.text,
@@ -137,7 +137,7 @@ export class MainMenu {
       left: 12,
       width: 50,
       height: 3,
-      zIndex: 2000,
+      zIndex: 0,
     });
     this.container.add(selectedDisplay);
 
@@ -153,7 +153,7 @@ export class MainMenu {
       left: 12,
       width: 50,
       height: 3,
-      zIndex: 2000,
+      zIndex: 0,
     });
     this.container.add(activatedDisplay);
 
@@ -220,5 +220,8 @@ export class MainMenu {
     if (this.selector) {
       this.selector.visible = false;
     }
+    // Trigger a re-render so the hidden menu components are cleared from the screen
+    // before other UI elements (like the window manager) draw over the same area.
+    this.renderer.requestRender();
   }
 }
