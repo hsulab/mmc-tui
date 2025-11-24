@@ -44,6 +44,7 @@ export class MMCTui {
 
     // Resize event
     this.renderer.on("resize", (width: number, height: number) => {
+      this.mainMenu?.updateLayout(width, height);
       // Resize panes
       if (this.panes) {
         this.panes.width = width;

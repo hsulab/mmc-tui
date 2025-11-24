@@ -40,6 +40,13 @@ export class MainMenu {
   private _width: number;
   private _height: number;
 
+  private readonly minCenteredWidth = 36;
+  private readonly minCenteredHeight = 12;
+  private readonly containerWidth = 36;
+  private readonly containerHeight = 6;
+
+  private readonly appNameTop = 1;
+
   constructor(
     renderer: CliRenderer,
     width: number = 80,
@@ -82,10 +89,9 @@ export class MainMenu {
     this.container = new BoxRenderable(renderer, {
       id: "main-menu-container",
       position: "absolute",
-      top: 5,
-      left: 25,
-      flexDirection: "row",
-      alignItems: "stretch",
+      ...this.calculateMenuPosition(),
+      width: this.containerWidth,
+      height: this.containerHeight,
       zIndex: 0,
     });
     renderer.root.add(this.container);
@@ -96,18 +102,21 @@ export class MainMenu {
       font: "tiny",
       color: LattePalette.text,
       backgroundColor: LattePalette.base,
+      top: 0,
+      left: 0,
       zIndex: 0,
       selectable: false,
     });
     this.container.add(this.appName);
 
+    this.positionAppName();
+
     // add selection
     this.selector = new SelectRenderable(renderer, {
       id: "main-menu-selector",
-      position: "absolute",
-      left: 12,
-      top: 8,
-      width: 50,
+      top: +1,
+      left: 0,
+      width: this.containerWidth,
       height: 2 * selectOptions.length,
       options: selectOptions,
       zIndex: 0,
@@ -135,6 +144,56 @@ export class MainMenu {
     );
 
     this.selector.focus();
+  }
+
+  public updateLayout(width: number, height: number) {
+    this.width = width;
+    this.height = height;
+
+    if (this.container) {
+      const { top, left } = this.calculateMenuPosition();
+      this.container.top = top;
+      this.container.left = left;
+      this.container.width = this.containerWidth;
+      this.container.height = this.containerHeight;
+    }
+
+    this.positionAppName();
+  }
+
+  private calculateMenuPosition() {
+    const shouldCenter =
+      this.width >= this.minCenteredWidth &&
+      this.height >= this.minCenteredHeight;
+
+    if (shouldCenter) {
+      console.log(`${this.width}, ${this.height}`);
+      const top = Math.max(
+        0,
+        Math.floor((this.height - this.containerHeight) / 3),
+      );
+      const left = Math.max(
+        0,
+        Math.floor((this.width - this.containerWidth) / 2),
+      );
+      console.log(`Menu position: ${top}, ${left}`);
+      return {
+        top,
+        left,
+      };
+    }
+
+    return { top: 0, left: 0 };
+  }
+
+  private positionAppName() {
+    if (!this.appName) return;
+
+    this.appName.top = 0;
+    this.appName.left = Math.max(
+      0,
+      Math.floor((this.containerWidth - this.appName.width) / 2),
+    );
   }
 
   public showMenuComponents() {
