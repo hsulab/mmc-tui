@@ -5,6 +5,7 @@ import { FlowPane } from "./flow.ts";
 
 export class PaneLayout {
   private renderer: CliRenderer;
+  private keybinds: ((key: any) => void) | null = null;
 
   private root: Node;
   private prev: Node | null = null;
@@ -43,12 +44,48 @@ export class PaneLayout {
   }
 
   render() {
+    // Draw the layout
     this.root.draw(this.renderer, {
       top: 0,
       left: 0,
       width: this.width,
       height: this.height,
     });
+  }
+
+  setupKeybinds() {
+    this.keybinds = (key: any) => {
+      if (key.name === "v" && key.ctrl) {
+        this.splitActive("vertical");
+      }
+      if (key.name === "s" && key.ctrl) {
+        this.splitActive("horizontal");
+      }
+      if (key.name === "q" && key.ctrl) {
+        let ids: string[] = [];
+        ids = this.renderer.root.getChildren().map((child) => child.id);
+        this.closeActive();
+        ids = this.renderer.root.getChildren().map((child) => child.id);
+      }
+      if (key.name === "linefeed") {
+        // crtl + j
+        this.moveActive("down");
+      }
+      if (key.name === "k" && key.ctrl) {
+        this.moveActive("up");
+      }
+      if (key.name === "backspace") {
+        // ctrl + h
+        this.moveActive("left");
+      }
+      if (key.name === "l" && key.ctrl) {
+        this.moveActive("right");
+      }
+      if (key.name === "z" && key.ctrl) {
+        this.zoomActive();
+      }
+    };
+    this.renderer.keyInput.on("keypress", this.keybinds);
   }
 
   // Utilities
