@@ -13,6 +13,7 @@ import {
 
 import { Pane } from "./base.ts";
 import { LattePalette } from "../palette.ts";
+import { DraggableBox } from "./graph.ts";
 
 interface TrailCell {
   x: number;
@@ -225,19 +226,29 @@ export class FlowPane extends Pane {
           }
           break;
         case "n": // Create new node
-          const newBox = new BoxRenderable(renderer, {
-            position: "absolute",
-            top: 20 + Math.random() * (this.box.height - 40),
-            left: 10 + Math.random() * (this.box.width - 10),
-            width: 8,
+          // const newBox = new BoxRenderable(renderer, {
+          //   position: "absolute",
+          //   top: 20 + Math.random() * (this.box.height - 40),
+          //   left: 10 + Math.random() * (this.box.width - 10),
+          //   width: 8,
+          //   height: 4,
+          //   title: "Node",
+          //   borderColor: LattePalette.teal,
+          //   backgroundColor: LattePalette.surface1,
+          //   zIndex: 100,
+          // });
+          const newBox = DraggableBox({
+            // x: 20 + Math.random() * (this.box.height - 40),
+            // y: 10 + Math.random() * (this.box.width - 10),
+            x: 20,
+            y: 10,
+            width: 16,
             height: 4,
-            title: "Node",
-            borderColor: LattePalette.teal,
-            backgroundColor: LattePalette.surface1,
-            zIndex: 100,
+            label: "Node",
+            color: RGBA.fromHex(LattePalette.teal),
           });
           this.box.add(newBox);
-          this.boxes.push(newBox);
+          // this.boxes.push(newBox);
           console.log(`New node created in FlowPane ${this.id}`);
           break;
         default:
