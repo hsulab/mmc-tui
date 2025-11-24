@@ -8,7 +8,7 @@ import { StatusBar } from "../status.ts";
 
 const basicPane = ChartPane;
 
-export class PaneLayout {
+export class LayoutManager {
   private renderer: CliRenderer;
   private keybinds: ((key: any) => void) | null = null;
   private statusBar: StatusBar | null = null;
@@ -180,7 +180,12 @@ export class PaneLayout {
     }
 
     activePane.rect = rectLeft;
-    const newPane = new Pane(this.renderer, this.generateId(), true, rectRight);
+    const newPane = new FlowPane(
+      this.renderer,
+      this.generateId(),
+      true,
+      rectRight,
+    );
 
     activePane.active = false;
 

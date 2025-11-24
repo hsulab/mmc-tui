@@ -1,7 +1,7 @@
 import { CliRenderer } from "@opentui/core";
 
 import { LattePalette } from "./palette.ts";
-import { PaneLayout } from "./window/pane.ts";
+import { LayoutManager } from "./window/manager.ts";
 import { MainMenu } from "./menu.ts";
 import { StatusBar } from "./status.ts";
 
@@ -16,7 +16,7 @@ export class MMCTui {
   private statusBar: StatusBar | null = null;
 
   // My window components
-  private panes: PaneLayout | null = null;
+  private panes: LayoutManager | null = null;
 
   constructor(renderer: CliRenderer) {
     this.renderer = renderer;
@@ -76,7 +76,7 @@ export class MMCTui {
     this.mainMenu.hideMenuComponents();
 
     // Start the window manager
-    this.panes = new PaneLayout(
+    this.panes = new LayoutManager(
       this.renderer,
       this.renderer.width,
       this.renderer.height - 1, // Leave space for status bar
