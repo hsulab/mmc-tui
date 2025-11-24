@@ -62,6 +62,34 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     this.renderPlot();
   }
 
+  public zoomIn() {
+    if (!this.plotDefinition) return;
+
+    const { config } = this.plotDefinition;
+    const xRange = config.xMax - config.xMin;
+    const centerX = (config.xMin + config.xMax) / 2;
+    const newRange = xRange * 0.8;
+
+    config.xMin = centerX - newRange / 2;
+    config.xMax = centerX + newRange / 2;
+
+    this.renderPlot();
+  }
+
+  public zoomOut() {
+    if (!this.plotDefinition) return;
+
+    const { config } = this.plotDefinition;
+    const xRange = config.xMax - config.xMin;
+    const centerX = (config.xMin + config.xMax) / 2;
+    const newRange = xRange * 1.2;
+
+    config.xMin = centerX - newRange / 2;
+    config.xMax = centerX + newRange / 2;
+
+    this.renderPlot();
+  }
+
   public renderPlot() {
     if (!this.plotDefinition) return;
 

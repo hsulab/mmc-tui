@@ -99,6 +99,14 @@ export class ChartPane extends Pane {
             );
           }
           break;
+        case "=": // Zoom in
+          this.canvas?.zoomIn();
+          console.log(`Zooming in Chart ${this.id}`);
+          break;
+        case "-": // Zoom out
+          this.canvas?.zoomOut();
+          console.log(`Zooming out Chart ${this.id}`);
+          break;
         case "n": // Create new chart element
           this.createChart();
           console.log(`Creating new chart element in Chart ${this.id}`);
