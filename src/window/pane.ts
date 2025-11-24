@@ -19,7 +19,7 @@ export class PaneLayout {
     this._width = width;
     this._height = height;
 
-    this.root = new FlowPane(this.generateId(), true);
+    this.root = new FlowPane(this.renderer, this.generateId(), true);
     this.root.collectPanes().forEach((p) => renderer.root.add(p.box));
   }
 
@@ -45,7 +45,7 @@ export class PaneLayout {
 
   render() {
     // Draw the layout
-    this.root.draw(this.renderer, {
+    this.root.draw({
       top: 0,
       left: 0,
       width: this.width,
@@ -108,7 +108,7 @@ export class PaneLayout {
     const activePane = panes.find((p) => p.active);
     if (!activePane) return;
 
-    const newPane = new FlowPane(this.generateId(), true);
+    const newPane = new FlowPane(this.renderer, this.generateId(), true);
 
     activePane.active = false;
 

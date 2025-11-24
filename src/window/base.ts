@@ -1,7 +1,6 @@
 import {
   CliRenderer,
   Box,
-  Text,
   BoxRenderable,
   type ProxiedVNode,
 } from "@opentui/core";
@@ -13,18 +12,22 @@ export type Direction = "horizontal" | "vertical";
 export type Rect = { top: number; left: number; width: number; height: number };
 
 export abstract class Node {
-  abstract draw(renderer: CliRenderer, rect: Rect): void;
+  abstract draw(rect: Rect): void;
   abstract collectPanes(): Pane[];
 }
 
 export class Pane extends Node {
+  protected renderer: CliRenderer;
+
   id: string;
   active: boolean;
   box: ProxiedVNode<typeof BoxRenderable>;
   rect: Rect | null = null;
 
-  constructor(id: string, active: boolean = false) {
+  constructor(renderer: CliRenderer, id: string, active: boolean = false) {
     super();
+    this.renderer = renderer;
+
     this.id = id;
     this.active = active;
     this.box = Box({
@@ -41,8 +44,8 @@ export class Pane extends Node {
     return "base";
   }
 
-  draw(renderer: CliRenderer, rect: Rect) {
-    let box = renderer.root.getRenderable(this.id);
+  draw(rect: Rect) {
+    let box = this.renderer.root.getRenderable(this.id);
     if (box instanceof BoxRenderable) {
       box.visible = true;
       box.top = rect.top;
@@ -78,17 +81,17 @@ export class Split extends Node {
     this.b = b;
   }
 
-  draw(renderer: CliRenderer, rect: Rect) {
+  draw(rect: Rect) {
     if (this.direction === "vertical") {
       const wA = Math.floor(rect.width * this.ratio);
       const wB = rect.width - wA;
-      this.a.draw(renderer, {
+      this.a.draw({
         top: rect.top,
         left: rect.left,
         width: wA,
         height: rect.height,
       });
-      this.b.draw(renderer, {
+      this.b.draw({
         top: rect.top,
         left: rect.left + wA,
         width: wB,
@@ -97,13 +100,13 @@ export class Split extends Node {
     } else {
       const hA = Math.floor(rect.height * this.ratio);
       const hB = rect.height - hA;
-      this.a.draw(renderer, {
+      this.a.draw({
         top: rect.top,
         left: rect.left,
         width: rect.width,
         height: hA,
       });
-      this.b.draw(renderer, {
+      this.b.draw({
         top: rect.top + hA,
         left: rect.left,
         width: rect.width,

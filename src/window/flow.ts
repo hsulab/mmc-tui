@@ -165,21 +165,23 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
-  constructor(id: string, active: boolean = false) {
-    super(id, active);
+  constructor(renderer: CliRenderer, id: string, active: boolean = false) {
+    super(renderer, id, active);
   }
 
   override get type(): string {
     return "flow";
   }
 
-  override draw(
-    renderer: CliRenderer,
-    rect: { top: number; left: number; width: number; height: number },
-  ): void {
-    super.draw(renderer, rect);
+  override draw(rect: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  }): void {
+    super.draw(rect);
 
-    let box = renderer.root.getRenderable(this.id);
+    let box = this.renderer.root.getRenderable(this.id);
     if (box instanceof BoxRenderable) {
       console.log(`Drawing FlowPane ${this.id}`);
       let mouseInteractionContainer = box.getRenderable(
@@ -195,7 +197,7 @@ export class FlowPane extends Pane {
         );
         mouseInteractionContainer = new MouseInteractionFrameBuffer(
           `${this.id}-mouse-interaction`,
-          renderer,
+          this.renderer,
         );
         mouseInteractionContainer.zIndex = 100;
         mouseInteractionContainer.top = 1;
@@ -214,7 +216,7 @@ export class FlowPane extends Pane {
       }
     }
 
-    this.setupKeybinds(renderer);
+    this.setupKeybinds(this.renderer);
   }
 
   public setupKeybinds(renderer: CliRenderer): void {
