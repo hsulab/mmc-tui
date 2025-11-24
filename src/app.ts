@@ -29,6 +29,16 @@ export class MMCTui {
       (value: string) => this.handldeMenuAction(value),
     );
     this.mainMenu.createMenu();
+
+    // Resize event
+    this.renderer.on("resize", (width: number, height: number) => {
+      // Resize panes
+      if (this.panes) {
+        this.panes.width = width;
+        this.panes.height = height;
+        this.panes.render();
+      }
+    });
   }
 
   private handldeMenuAction(value: string) {
