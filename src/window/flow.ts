@@ -305,7 +305,10 @@ export class FlowPane extends Pane {
     this.requestEdgeRender();
   }
 
-  private connectNodes(from: BoxRenderable, to: BoxRenderable): void {
+  private connectNodes(
+    from: SelectableBoxRenderable,
+    to: SelectableBoxRenderable,
+  ): void {
     const key = this.edgeKey(from, to);
     const alreadyConnected = this.edges.some(
       (edge) => this.edgeKey(edge.from, edge.to) === key,
