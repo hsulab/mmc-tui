@@ -9,11 +9,20 @@ export class StatusBar {
   private _width: number;
   private _height: number;
 
-  constructor(renderer: CliRenderer, width: number, height: number) {
+  private _projectName: string | null = null;
+
+  constructor(
+    renderer: CliRenderer,
+    width: number,
+    height: number,
+    projectName?: string,
+  ) {
     this.renderer = renderer;
 
     this._width = width;
     this._height = height;
+
+    this._projectName = projectName || null;
   }
 
   get width(): number {
@@ -36,6 +45,14 @@ export class StatusBar {
     if (this.statusText) {
       this.statusText.top = value - 1;
     }
+  }
+
+  get projectName(): string | null {
+    return this._projectName;
+  }
+
+  set projectName(value: string | null) {
+    this._projectName = value;
   }
 
   public createStatusBar(): void {
@@ -69,7 +86,7 @@ export class StatusBar {
 
   public updateStatus(message: string): void {
     if (this.statusText) {
-      this.statusText.content = ` Status: ${message} `;
+      this.statusText.content = ` (${this._projectName}): ${message} `;
     }
   }
 

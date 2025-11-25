@@ -92,9 +92,11 @@ export class MMCTui {
     this.currentProjectPath = payload?.projectPath ?? null;
 
     const projectLabel = this.currentProjectName
-      ? `Project: ${this.currentProjectName}`
-      : "Project: (unnamed)";
-    this.statusBar?.updateStatus(projectLabel);
+      ? `${this.currentProjectName}`
+      : "unnamed";
+    if (this.statusBar) {
+      this.statusBar.projectName = projectLabel;
+    }
   }
 
   private runWindowManager() {
