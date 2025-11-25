@@ -156,7 +156,7 @@ export function DraggableBox(
             props.onMove?.(this as unknown as BoxRenderable);
           }
 
-          setSelected(this, !isSelected);
+          setSelected(this, false);
           props.onDeselect?.(this as unknown as BoxRenderable);
 
           isDragging = false;
