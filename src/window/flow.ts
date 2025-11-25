@@ -314,6 +314,8 @@ export class FlowPane extends Pane {
     if (alreadyConnected) return;
 
     this.edges.push({ from, to });
+    from.setSelected(false);
+    to.setSelected(false);
     console.log(`Linked ${from.id} -> ${to.id} in FlowPane ${this.id}`);
   }
 
