@@ -494,7 +494,7 @@ export class MainMenu {
     let options = this.loadRecentProjects();
     const hasProjects = options.some((option) => option.value);
 
-    setTimeout(() => {
+    process.nextTick(() => {
       this.recentProjectsContainer!.visible = true;
 
       this.recentProjectsSelector!.options = options;
@@ -502,14 +502,13 @@ export class MainMenu {
       this.recentProjectsSelector!.focus();
 
       this.positionRecentProjects();
-    }, 0);
+    });
 
     if (!hasProjects) {
       this.recentProjectsSelector!.blur();
     }
 
     this.addOverlayKeyHandler();
-    this.renderer.requestRender();
   }
 
   private hideRecentProjects() {
