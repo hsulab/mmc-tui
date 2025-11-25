@@ -22,11 +22,18 @@ export class FlowPane extends Pane {
   private edgeLayer: EdgeFrameBuffer | null = null;
 
   private nodes: SelectableBoxRenderable[] = [];
+  private nodeDetails: Map<
+    SelectableBoxRenderable,
+    { type: string; label: string }
+  > = new Map();
   private edges: NodeEdge[] = [];
 
   private pendingConnectionNode: SelectableBoxRenderable | null = null;
 
   private nodeIndex: number = 0;
+
+  private runButton: BoxRenderable | null = null;
+  private isRunButtonPressed = false;
 
   private selectorContainer: BoxRenderable | null = null;
   private selector: SelectRenderable | null = null;
@@ -61,6 +68,8 @@ export class FlowPane extends Pane {
 
     this.createSelector();
 
+    this.createRunButton();
+
     this.nodes = []; // TODO: If we have some init nodes?
   }
 
@@ -77,6 +86,8 @@ export class FlowPane extends Pane {
     this.edgeLayer!.left = 0;
     this.edgeLayer!.width = width - 2;
     this.edgeLayer!.height = height - 2;
+
+    this.updateRunButtonPosition();
 
     this.setupKeybinds(this.renderer);
   }
@@ -203,6 +214,164 @@ export class FlowPane extends Pane {
     this.nodeSelectorVisible = false;
   }
 
+  private createRunButton(): void {
+    if (this.runButton) return;
+
+    const baseColor = RGBA.fromInts(0, 0, 0, 0);
+    const downColor = RGBA.fromHex(LattePalette.red);
+    const hoverColor = RGBA.fromHex(LattePalette.green);
+
+    this.runButton = new BoxRenderable(this.renderer, {
+      id: `${this.id}-run-button`,
+      position: "absolute",
+      top: this.rect.top + this.rect.height - 4,
+      left: this.rect.left + this.rect.width - 12,
+      width: 10,
+      height: 3,
+      border: true,
+      borderStyle: "rounded",
+      borderColor: LattePalette.peach,
+      backgroundColor: baseColor,
+      zIndex: 300,
+      renderAfter: function (buffer) {
+        const label = "Run";
+        const textX =
+          this.x + Math.max(1, Math.floor((this.width - label.length) / 2));
+        const textY = this.y + Math.floor(this.height / 2);
+        buffer.drawText(label, textX, textY, RGBA.fromHex(LattePalette.text));
+      },
+      onMouse: (event) => {
+        switch (event.type) {
+          case "down":
+            if (event.button === 0) {
+              this.isRunButtonPressed = true;
+              this.runButton!.backgroundColor = downColor;
+              event.stopPropagation();
+            }
+            break;
+          case "up":
+            if (event.button === 0 && this.isRunButtonPressed) {
+              this.isRunButtonPressed = false;
+              this.runButton!.backgroundColor = baseColor;
+              this.runWorkflow();
+              event.stopPropagation();
+            }
+            break;
+          case "over":
+            if (!this.isRunButtonPressed) {
+              this.runButton!.backgroundColor = hoverColor;
+            }
+            break;
+          case "out":
+            this.isRunButtonPressed = false;
+            this.runButton!.backgroundColor = baseColor;
+            break;
+        }
+      },
+    });
+
+    this.box!.add(this.runButton);
+  }
+
+  private updateRunButtonPosition(): void {
+    if (!this.runButton) return;
+
+    const padding = 1;
+    const innerLeft = this.rect.left + 1;
+    const innerTop = this.rect.top + 1;
+    const innerWidth = Math.max(0, this.rect.width - 2);
+    const innerHeight = Math.max(0, this.rect.height - 2);
+
+    const buttonWidth = Math.max(1, Math.min(10, innerWidth));
+    const buttonHeight = Math.max(1, Math.min(3, innerHeight));
+
+    this.runButton.width = buttonWidth;
+    this.runButton.height = buttonHeight;
+    this.runButton.left =
+      innerLeft + Math.max(0, innerWidth - this.runButton.width - padding);
+    this.runButton.top =
+      innerTop + Math.max(0, innerHeight - this.runButton.height - padding);
+  }
+
+  private runWorkflow(): void {
+    if (this.nodes.length === 0) {
+      console.log(`No nodes to run in FlowPane ${this.id}`);
+      return;
+    }
+
+    console.log(`Starting workflow run for FlowPane ${this.id}`);
+
+    const inDegree = new Map<SelectableBoxRenderable, number>();
+    const adjacency = new Map<
+      SelectableBoxRenderable,
+      SelectableBoxRenderable[]
+    >();
+
+    this.nodes.forEach((node) => inDegree.set(node, 0));
+
+    this.edges.forEach((edge) => {
+      const target = edge.to as SelectableBoxRenderable;
+      const source = edge.from as SelectableBoxRenderable;
+
+      inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
+      const list = adjacency.get(source) ?? [];
+      list.push(target);
+      adjacency.set(source, list);
+    });
+
+    const queue: SelectableBoxRenderable[] = [];
+    inDegree.forEach((value, node) => {
+      if (value === 0) queue.push(node);
+    });
+
+    const executionOrder: SelectableBoxRenderable[] = [];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      executionOrder.push(current);
+      const neighbors = adjacency.get(current) ?? [];
+      neighbors.forEach((neighbor) => {
+        const remaining = (inDegree.get(neighbor) ?? 0) - 1;
+        inDegree.set(neighbor, remaining);
+        if (remaining === 0) {
+          queue.push(neighbor);
+        }
+      });
+    }
+
+    if (executionOrder.length !== this.nodes.length) {
+      console.log(
+        `Workflow contains cycles or disconnected edges; running in insertion order for FlowPane ${this.id}`,
+      );
+      executionOrder.splice(0, executionOrder.length, ...this.nodes);
+    }
+
+    executionOrder.forEach((node, index) =>
+      this.runNodePlaceholder(node, index + 1, executionOrder.length),
+    );
+
+    console.log(`Workflow run completed for FlowPane ${this.id}`);
+  }
+
+  private runNodePlaceholder(
+    node: SelectableBoxRenderable,
+    step: number,
+    total: number,
+  ): void {
+    const detail = this.nodeDetails.get(node);
+    const nodeType = detail?.type ?? "Node";
+    const nodeLabel = detail?.label ?? node.id;
+    const originalColor = node.backgroundColor;
+
+    node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
+    setTimeout(() => {
+      node.backgroundColor = originalColor;
+    }, 1000);
+
+    console.log(
+      `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
+    );
+  }
+
   private requestEdgeRender(): void {
     this.edgeLayer?.requestRender();
   }
@@ -270,6 +439,10 @@ export class FlowPane extends Pane {
     });
     this.box!.add(newBox);
     this.nodes.push(newBox as SelectableBoxRenderable);
+    this.nodeDetails.set(newBox as SelectableBoxRenderable, {
+      type: value,
+      label: nodeLabel,
+    });
     this.requestEdgeRender();
     console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
   }
@@ -332,6 +505,12 @@ export class FlowPane extends Pane {
     }
     this.edges = [];
     this.pendingConnectionNode = null;
+    if (this.runButton) {
+      this.box?.remove(this.runButton.id);
+      this.runButton.destroy();
+      this.runButton = null;
+    }
+    this.nodeDetails.clear();
     if (this.keybinds) {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
