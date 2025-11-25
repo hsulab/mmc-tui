@@ -23,11 +23,14 @@ class EdgeFrameBuffer extends FrameBufferRenderable {
   private readonly BACKGROUND_COLOR: RGBA;
   private readonly LINE_COLOR = RGBA.fromHex(LattePalette.subtext0);
 
+  private linemarker: string;
+
   constructor(
     renderer: CliRenderer,
     id: string,
     private readonly edgesProvider: () => NodeEdge[],
     backgroundColor: RGBA,
+    linemarker: string = "⋯", // "⠒"
   ) {
     super(renderer, {
       id,
@@ -35,6 +38,8 @@ class EdgeFrameBuffer extends FrameBufferRenderable {
       height: renderer.terminalHeight,
       zIndex: 90,
     });
+
+    this.linemarker = linemarker;
 
     this.BACKGROUND_COLOR = backgroundColor;
   }
@@ -76,7 +81,7 @@ class EdgeFrameBuffer extends FrameBufferRenderable {
         this.frameBuffer.setCell(
           currentX,
           currentY,
-          "⠒",
+          this.linemarker,
           this.LINE_COLOR,
           this.BACKGROUND_COLOR,
         );
