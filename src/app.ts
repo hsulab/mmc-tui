@@ -9,6 +9,9 @@ export class MMCTui {
   private renderer: CliRenderer;
   private inMenu: boolean = true;
 
+  private currentProjectName: string | null = null;
+  private currentProjectPath: string | null = null;
+
   // My menu components
   private mainMenu: MainMenu | null = null;
 
@@ -30,7 +33,8 @@ export class MMCTui {
       this.renderer,
       this.renderer.width,
       this.renderer.height,
-      (value: string) => this.handldeMenuAction(value),
+      (value: string, payload?: Record<string, string>) =>
+        this.handldeMenuAction(value, payload),
     );
     this.mainMenu.createMenu();
 
@@ -55,12 +59,25 @@ export class MMCTui {
     });
   }
 
-  private handldeMenuAction(value: string) {
+  private handldeMenuAction(value: string, payload?: Record<string, string>) {
     switch (value) {
       case "create_new":
-        this.runWindowManager();
+        if (payload) {
+          this.setCurrentProject(payload);
+          this.runWindowManager();
+          console.log(
+            `Opened new project by create_new: ${payload.projectName}`,
+          );
+        }
         break;
       case "open_recent":
+        if (payload) {
+          this.setCurrentProject(payload);
+          this.runWindowManager();
+          console.log(
+            `Opened new project by open_recent: ${payload.projectName}`,
+          );
+        }
         break;
       case "exit_app":
         // TODO: Clean up properly
@@ -68,6 +85,16 @@ export class MMCTui {
       default:
         break;
     }
+  }
+
+  private setCurrentProject(payload?: Record<string, string>) {
+    this.currentProjectName = payload?.projectName ?? null;
+    this.currentProjectPath = payload?.projectPath ?? null;
+
+    const projectLabel = this.currentProjectName
+      ? `Project: ${this.currentProjectName}`
+      : "Project: (unnamed)";
+    this.statusBar?.updateStatus(projectLabel);
   }
 
   private runWindowManager() {
