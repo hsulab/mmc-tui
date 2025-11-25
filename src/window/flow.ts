@@ -289,12 +289,6 @@ export class FlowPane extends Pane {
         showScrollIndicator: false,
         wrapSelection: true,
       });
-      console.log(
-        `Container size: ${this.selectorContainer.width}x${this.selectorContainer.height}`,
-      );
-      console.log(
-        `Selector size: ${this.selector.width}x${this.selector.height}`,
-      );
 
       this.selector.on(
         SelectRenderableEvents.ITEM_SELECTED,

@@ -75,9 +75,6 @@ export class Pane extends Node {
       : LattePalette.base;
     this.box.borderStyle = "rounded";
     this.box.borderColor = this.active ? LattePalette.peach : LattePalette.teal;
-    console.log(
-      `super: ${this.box.top}, ${this.box.left}, ${this.box.width}, ${this.box.height}`,
-    );
   }
 
   collectPanes() {
