@@ -20,9 +20,10 @@ export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
   private edgeLayer: EdgeFrameBuffer | null = null;
-  private boxes: SelectableBoxRenderable[] = [];
 
+  private nodes: SelectableBoxRenderable[] = [];
   private edges: NodeEdge[] = [];
+
   private pendingConnectionNode: SelectableBoxRenderable | null = null;
 
   private nodeIndex: number = 0;
@@ -59,7 +60,8 @@ export class FlowPane extends Pane {
     this.createEdgeLayer();
 
     this.createSelector();
-    this.boxes = []; // TODO: If we have some init nodes?
+
+    this.nodes = []; // TODO: If we have some init nodes?
   }
 
   override get type(): string {
@@ -251,7 +253,9 @@ export class FlowPane extends Pane {
     const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
     const newBox = DraggableBox(this.renderer, {
       id: nodeId,
-      x: this.rect.left,
+      x:
+        this.rect.left +
+        Math.max(0, Math.floor(((this.rect.width - 18) / 2) * Math.random())),
       y: this.rect.top,
       width: 18,
       height: 5,
@@ -265,7 +269,7 @@ export class FlowPane extends Pane {
       selectedBorderColor: RGBA.fromHex(LattePalette.red),
     });
     this.box!.add(newBox);
-    this.boxes.push(newBox as SelectableBoxRenderable);
+    this.nodes.push(newBox as SelectableBoxRenderable);
     this.requestEdgeRender();
     console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
   }
@@ -297,7 +301,7 @@ export class FlowPane extends Pane {
             console.log(`Node selector opened in FlowPane ${this.id}`);
             return;
           case "t":
-            this.boxes.forEach((box) => {
+            this.nodes.forEach((box) => {
               box.backgroundColor = RGBA.fromHex(LattePalette.peach);
             });
             console.log(`All node colors updated in FlowPane ${this.id}`);
@@ -322,9 +326,9 @@ export class FlowPane extends Pane {
       this.selectorContainer.destroy();
       this.selectorContainer = null;
     }
-    if (this.boxes.length > 0) {
-      this.boxes.forEach((box) => box.destroy());
-      this.boxes = [];
+    if (this.nodes.length > 0) {
+      this.nodes.forEach((box) => box.destroy());
+      this.nodes = [];
     }
     this.edges = [];
     this.pendingConnectionNode = null;
