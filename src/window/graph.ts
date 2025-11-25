@@ -63,7 +63,7 @@ export function DraggableBox(
   let renderAfter = function (
     this: Renderable,
     buffer: OptimizedBuffer,
-    deltaTime: number,
+    _deltaTime: number,
   ) {
     const currentTime = Date.now();
     if (scrollText && currentTime - scrollTimestamp > 2000) {

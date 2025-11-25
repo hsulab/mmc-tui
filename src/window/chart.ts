@@ -1,9 +1,4 @@
-import {
-  CliRenderer,
-  FrameBufferRenderable,
-  OptimizedBuffer,
-  RGBA,
-} from "@opentui/core";
+import { CliRenderer, RGBA } from "@opentui/core";
 
 import { Pane, type Rect } from "./base.ts";
 

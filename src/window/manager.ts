@@ -113,11 +113,7 @@ export class LayoutManager {
     // TODO: Remove all panes from renderer properly
     const panes = this.root.collectPanes();
     panes.forEach((p) => {
-      if ("destroy" in p) {
-        (p as any).destroy();
-      } else {
-        this.windowContainer!.remove(p.id);
-      }
+      p.destroy();
     });
   }
 

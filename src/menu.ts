@@ -45,8 +45,6 @@ export class MainMenu {
   private readonly containerWidth = 36;
   private readonly containerHeight = 6;
 
-  private readonly appNameTop = 1;
-
   constructor(
     renderer: CliRenderer,
     width: number = 80,
