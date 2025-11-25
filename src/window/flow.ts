@@ -15,7 +15,7 @@ import {
 
 import { Pane, type Rect } from "./base.ts";
 import { LattePalette } from "../palette.ts";
-import { DraggableBox, type SelectableBoxRenderable } from "./graph.ts";
+import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
 
 type NodeEdge = { from: BoxRenderable; to: BoxRenderable };
 
