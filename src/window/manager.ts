@@ -210,6 +210,7 @@ export class LayoutManager {
     const sibling = isLeft ? (parent as Split).b : (parent as Split).a;
 
     // TODO: need cleanup func
+    activePane.destroy(); // remove keybinds, etc.
     this.windowContainer!.remove(activePane.id);
 
     this.root = this.replaceNode(this.root, parent, sibling);

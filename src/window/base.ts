@@ -10,6 +10,7 @@ export abstract class Node {
   abstract draw(): void;
   abstract updateRect(rect: Rect): void;
   abstract collectPanes(): Pane[];
+  abstract destroy(): void;
 }
 
 export class Pane extends Node {
@@ -82,6 +83,14 @@ export class Pane extends Node {
   collectPanes() {
     return [this];
   }
+
+  destroy(): void {
+    if (this.box) {
+      this.renderer.root.remove(this.box.id);
+      this.box.destroy();
+      this.box = null;
+    }
+  }
 }
 
 export class Split extends Node {
@@ -125,5 +134,13 @@ export class Split extends Node {
 
   collectPanes() {
     return [...this.a.collectPanes(), ...this.b.collectPanes()];
+  }
+
+  /** Destroy both child nodes
+   *  This may not be used as we cane always access the pane from the manager.
+   */
+  destroy(): void {
+    this.a.destroy();
+    this.b.destroy();
   }
 }

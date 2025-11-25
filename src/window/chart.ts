@@ -119,11 +119,7 @@ export class ChartPane extends Pane {
     renderer.keyInput.on("keypress", this.keybinds);
   }
 
-  destroy(): void {
-    if (this.box) {
-      this.box.destroy();
-      this.renderer.root.remove(this.box.id);
-    }
+  override destroy(): void {
     if (this.canvas) {
       this.renderer.root.remove(this.canvas.id);
       this.canvas = null;
@@ -132,5 +128,6 @@ export class ChartPane extends Pane {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
     }
+    super.destroy(); // destroy pane box
   }
 }
