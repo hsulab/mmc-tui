@@ -9,6 +9,9 @@ import {
   FrameBufferRenderable,
   OptimizedBuffer,
   MouseEvent,
+  SelectRenderable,
+  SelectRenderableEvents,
+  type SelectOption,
 } from "@opentui/core";
 
 import { Pane, type Rect } from "./base.ts";
@@ -176,6 +179,27 @@ export class FlowPane extends Pane {
 
   private nodeIndex: number = 0;
 
+  private selectorContainer: BoxRenderable | null = null;
+  private selector: SelectRenderable | null = null;
+  private nodeSelectorVisible: boolean = false;
+  private nodeOptions: SelectOption[] = [
+    {
+      name: "Build",
+      value: "Build",
+      description: "  Build structures",
+    },
+    {
+      name: "Compute",
+      value: "Compute",
+      description: "  Run calculation/simulation",
+    },
+    {
+      name: "Validate",
+      value: "Validate",
+      description: "  Analyze and verify data",
+    },
+  ];
+
   constructor(
     renderer: CliRenderer,
     id: string,
@@ -186,6 +210,7 @@ export class FlowPane extends Pane {
 
     this.createMouseInteractionBuffer();
 
+    this.createSelector();
     this.boxes = []; // TODO: If we have some init nodes?
   }
 
@@ -222,51 +247,197 @@ export class FlowPane extends Pane {
     this.box!.add(this.mouseInteractionBuffer);
   }
 
+  private createSelector(): void {
+    if (this.selectorContainer) return;
+
+    const containerWidth = 36;
+    const containerHeight = this.nodeOptions.length * 2 + 2;
+
+    if (!this.selectorContainer) {
+      this.selectorContainer = new BoxRenderable(this.renderer, {
+        id: `${this.id}-node-selector-container`,
+        title: " Select Node Type ",
+        position: "absolute",
+        top: this.rect.top + (this.rect.height - containerHeight - 2) / 2,
+        left: this.rect.left + (this.rect.width - containerWidth - 2) / 2,
+        width: containerWidth,
+        height: containerHeight,
+        border: true,
+        borderStyle: "rounded",
+        borderColor: LattePalette.peach,
+        backgroundColor: LattePalette.surface0,
+        zIndex: 400,
+      });
+
+      this.selector = new SelectRenderable(this.renderer, {
+        id: `${this.id}-node-selector`,
+        top: 0,
+        left: 0,
+        width: containerWidth - 2,
+        height: containerHeight - 2,
+        zIndex: 401,
+        options: this.nodeOptions,
+        backgroundColor: LattePalette.surface0,
+        textColor: LattePalette.text,
+        focusedBackgroundColor: LattePalette.surface0,
+        focusedTextColor: LattePalette.text,
+        selectedBackgroundColor: LattePalette.peach,
+        selectedTextColor: LattePalette.text,
+        descriptionColor: LattePalette.subtext0,
+        selectedDescriptionColor: LattePalette.text,
+        showDescription: true,
+        showScrollIndicator: false,
+        wrapSelection: true,
+      });
+      console.log(
+        `Container size: ${this.selectorContainer.width}x${this.selectorContainer.height}`,
+      );
+      console.log(
+        `Selector size: ${this.selector.width}x${this.selector.height}`,
+      );
+
+      this.selector.on(
+        SelectRenderableEvents.ITEM_SELECTED,
+        (_: number, option: SelectOption) => {
+          this.createNodeFromSelection(option.value);
+          this.hideNodeSelector();
+          this.active = true; // Reactivate pane
+          this.draw(); // Redraw border
+        },
+      );
+
+      this.selectorContainer.visible = false;
+      this.nodeSelectorVisible = false;
+      this.selector.blur();
+
+      this.selectorContainer.add(this.selector);
+      this.box!.add(this.selectorContainer);
+    }
+  }
+
+  private showNodeSelector(): void {
+    if (!this.selectorContainer || !this.box) return;
+
+    const containerWidth = 36;
+    const selectHeight = this.nodeOptions.length * 2;
+    const containerHeight = Math.max(8, selectHeight + 2);
+
+    const innerLeft = this.rect.left + 1;
+    const innerTop = this.rect.top + 1;
+    const innerWidth = Math.max(0, this.rect.width - 2);
+    const innerHeight = Math.max(0, this.rect.height - 2);
+
+    const newWidth = Math.min(containerWidth, innerWidth);
+    const newHeight = Math.min(containerHeight, innerHeight);
+
+    this.selectorContainer.width = newWidth;
+    this.selectorContainer.height = newHeight;
+    this.selectorContainer.left =
+      innerLeft + Math.max(0, Math.floor((innerWidth - newWidth) / 2));
+    this.selectorContainer.top =
+      innerTop + Math.max(0, Math.floor((innerHeight - newHeight) / 2));
+
+    this.selector!.width = Math.max(0, this.selectorContainer.width - 2);
+    this.selector!.height = Math.max(0, this.selectorContainer.height - 2);
+
+    this.selectorContainer.visible = true;
+    this.selector!.visible = true;
+    this.selector!.focus();
+
+    this.nodeSelectorVisible = true;
+  }
+
+  private hideNodeSelector(): void {
+    if (!this.selectorContainer) return;
+
+    this.selector!.blur();
+    this.selector!.visible = false;
+    this.selectorContainer.visible = false;
+
+    this.nodeSelectorVisible = false;
+  }
+
+  private createNodeFromSelection(value: string): void {
+    this.nodeIndex++;
+    const nodeId = `${this.id}-${value.toLowerCase()}-${this.nodeIndex}`;
+    const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
+    const newBox = DraggableBox({
+      id: nodeId,
+      x: this.rect.left,
+      y: this.rect.top,
+      width: 18,
+      height: 5,
+      label: nodeLabel,
+      color: RGBA.fromHex(LattePalette.teal),
+    });
+    this.box!.add(newBox);
+    const nodeBox = this.box!.getChildren().find(
+      (child) => child.id === nodeId,
+    ) as BoxRenderable;
+    this.boxes.push(nodeBox);
+    console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
+  }
+
   public setupKeybinds(renderer: CliRenderer): void {
     if (this.keybinds) return;
 
     this.keybinds = (key: any) => {
-      if (!this.active) return;
+      // If selector is visible, selector takes priority
+      if (this.nodeSelectorVisible) {
+        switch (key.name) {
+          case "n":
+            this.hideNodeSelector();
+            this.active = true; // Reactivate pane
+            this.draw(); // Redraw border
+            console.log(`Node selector closed in FlowPane ${this.id}`);
+            return; // swallow
+        }
 
-      // Example keybinds for demonstration
-      switch (key.name) {
-        case "x":
-          if (key.ctrl) {
-            console.log(`Ctrl+X pressed in FlowPane ${this.id}`);
-          }
-          break;
-        case "n": // Create new node
-          const nodeId = `node-${this.id}-${this.nodeIndex}`;
-          const nodeLabel = `node-${this.nodeIndex}`;
-          const newBox = DraggableBox({
-            id: nodeId,
-            x: this.rect.left,
-            y: this.rect.top,
-            width: 16,
-            height: 4,
-            label: nodeLabel,
-            color: RGBA.fromHex(LattePalette.teal),
-          });
-          this.box!.add(newBox);
-          // Get the created BoxRenderable from the box
-          const nodeBox = this.box!.getChildren().find(
-            (child) => child.id === nodeId,
-          ) as BoxRenderable;
-          this.boxes.push(nodeBox);
-          this.nodeIndex += 1;
-          console.log(`New node created in FlowPane ${this.id}`);
-          break;
-        case "t": // Update color of all boxes
-          this.boxes.forEach((box) => {
-            box.backgroundColor = RGBA.fromHex(LattePalette.peach);
-          });
-          console.log(`All node colors updated in FlowPane ${this.id}`);
-          break;
-        default:
-          break;
+        return;
+      }
+      // Pane-level keybinds
+      if (this.active) {
+        switch (key.name) {
+          case "n":
+            this.showNodeSelector();
+            this.active = false; // Temporarily deactivate pane to focus on selector
+            this.draw(); // Redraw border
+            console.log(`Node selector opened in FlowPane ${this.id}`);
+            return;
+          case "t":
+            this.boxes.forEach((box) => {
+              box.backgroundColor = RGBA.fromHex(LattePalette.peach);
+            });
+            console.log(`All node colors updated in FlowPane ${this.id}`);
+            return;
+        }
       }
     };
 
     renderer.keyInput.on("keypress", this.keybinds);
+  }
+
+  override destroy(): void {
+    if (this.mouseInteractionBuffer) {
+      this.mouseInteractionBuffer.destroy();
+      this.mouseInteractionBuffer = null;
+    }
+    if (this.selector) {
+      this.selector.destroy();
+      this.selector = null;
+    }
+    if (this.selectorContainer) {
+      this.selectorContainer.destroy();
+      this.selectorContainer = null;
+    }
+    if (this.boxes.length > 0) {
+      this.boxes.forEach((box) => box.destroy());
+      this.boxes = [];
+    }
+    if (this.keybinds) {
+      this.renderer.keyInput.off("keypress", this.keybinds);
+      this.keybinds = null;
+    }
+    super.destroy(); // Destroy pane box
   }
 }
