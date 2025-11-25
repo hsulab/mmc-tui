@@ -8,7 +8,6 @@ import {
   BoxRenderable,
   FrameBufferRenderable,
   OptimizedBuffer,
-  MouseEvent,
   SelectRenderable,
   SelectRenderableEvents,
   type SelectOption,
@@ -19,159 +18,6 @@ import { LattePalette } from "../palette.ts";
 import { DraggableBox, type SelectableBoxRenderable } from "./graph.ts";
 
 type NodeEdge = { from: BoxRenderable; to: BoxRenderable };
-
-interface TrailCell {
-  x: number;
-  y: number;
-  timestamp: number;
-  isDrag?: boolean;
-}
-
-class MouseInteractionFrameBuffer extends FrameBufferRenderable {
-  private readonly trailCells = new Map<string, TrailCell>();
-  private readonly activatedCells = new Set<string>();
-  private readonly TRAIL_FADE_DURATION = 3000;
-
-  private readonly TRAIL_COLOR = RGBA.fromInts(64, 224, 208, 255);
-  private readonly DRAG_COLOR = RGBA.fromInts(255, 165, 0, 255);
-  private readonly ACTIVATED_COLOR = RGBA.fromInts(255, 20, 147, 255);
-  private readonly CURSOR_COLOR = RGBA.fromInts(255, 255, 255, 255);
-
-  private BACKGROUND_COLOR = RGBA.fromHex(LattePalette.overlay2);
-
-  constructor(renderer: CliRenderer, id: string, backgroundColor?: RGBA) {
-    super(renderer, {
-      id,
-      width: renderer.terminalWidth,
-      height: renderer.terminalHeight,
-      zIndex: 100,
-    });
-
-    if (backgroundColor) {
-      this.BACKGROUND_COLOR = backgroundColor;
-    }
-  }
-
-  protected override renderSelf(buffer: OptimizedBuffer): void {
-    const currentTime = Date.now();
-
-    this.frameBuffer.clear(this.BACKGROUND_COLOR);
-
-    for (const [key, cell] of this.trailCells.entries()) {
-      if (currentTime - cell.timestamp > this.TRAIL_FADE_DURATION) {
-        this.trailCells.delete(key);
-      }
-    }
-
-    for (const [, cell] of this.trailCells.entries()) {
-      const age = currentTime - cell.timestamp;
-      const fadeRatio = 1 - age / this.TRAIL_FADE_DURATION;
-
-      if (fadeRatio > 0) {
-        const baseColor = cell.isDrag ? this.DRAG_COLOR : this.TRAIL_COLOR;
-        const smoothAlpha = fadeRatio;
-
-        const fadedColor = RGBA.fromValues(
-          baseColor.r,
-          baseColor.g,
-          baseColor.b,
-          smoothAlpha,
-        );
-
-        this.frameBuffer.setCellWithAlphaBlending(
-          cell.x,
-          cell.y,
-          "█",
-          fadedColor,
-          this.BACKGROUND_COLOR,
-        );
-      }
-    }
-
-    for (const cellKey of this.activatedCells) {
-      const [x, y] = cellKey.split(",").map(Number);
-
-      this.frameBuffer.drawText(
-        "█",
-        x!,
-        y!,
-        this.ACTIVATED_COLOR,
-        this.BACKGROUND_COLOR,
-      );
-    }
-
-    const recentTrails = Array.from(this.trailCells.values())
-      .filter((cell) => currentTime - cell.timestamp < 100)
-      .sort((a, b) => b.timestamp - a.timestamp);
-
-    if (recentTrails.length > 0) {
-      const latest = recentTrails[0];
-      this.frameBuffer.setCellWithAlphaBlending(
-        latest!.x,
-        latest!.y,
-        "+",
-        this.CURSOR_COLOR,
-        this.BACKGROUND_COLOR,
-      );
-    }
-
-    super.renderSelf(buffer);
-  }
-
-  protected override onMouseEvent(event: MouseEvent): void {
-    if (event.propagationStopped) return;
-
-    const localX = event.x - this.x;
-    const localY = event.y - this.y;
-
-    if (
-      localX < 0 ||
-      localY < 0 ||
-      localX >= this.width ||
-      localY >= this.height
-    ) {
-      return;
-    }
-
-    const cellKey = `${localX},${localY}`;
-
-    switch (event.type) {
-      case "move":
-        this.trailCells.set(cellKey, {
-          x: localX,
-          y: localY,
-          timestamp: Date.now(),
-          isDrag: false,
-        });
-        this.requestRender();
-        break;
-
-      case "drag":
-        this.trailCells.set(cellKey, {
-          x: localX,
-          y: localY,
-          timestamp: Date.now(),
-          isDrag: true,
-        });
-        this.requestRender();
-        break;
-
-      case "down":
-        if (this.activatedCells.has(cellKey)) {
-          this.activatedCells.delete(cellKey);
-        } else {
-          this.activatedCells.add(cellKey);
-        }
-        this.requestRender();
-        break;
-    }
-  }
-
-  public clearState(): void {
-    this.trailCells.clear();
-    this.activatedCells.clear();
-  }
-}
 
 class EdgeFrameBuffer extends FrameBufferRenderable {
   private readonly BACKGROUND_COLOR: RGBA;
@@ -255,7 +101,6 @@ class EdgeFrameBuffer extends FrameBufferRenderable {
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
-  private mouseInteractionBuffer: MouseInteractionFrameBuffer | null = null;
   private edgeLayer: EdgeFrameBuffer | null = null;
   private boxes: SelectableBoxRenderable[] = [];
 
@@ -294,7 +139,6 @@ export class FlowPane extends Pane {
     super(renderer, id, active, rect);
 
     this.createEdgeLayer();
-    this.createMouseInteractionBuffer();
 
     this.createSelector();
     this.boxes = []; // TODO: If we have some init nodes?
@@ -314,28 +158,7 @@ export class FlowPane extends Pane {
     this.edgeLayer!.width = width - 2;
     this.edgeLayer!.height = height - 2;
 
-    this.mouseInteractionBuffer!.top = 0;
-    this.mouseInteractionBuffer!.left = 0;
-    this.mouseInteractionBuffer!.width = width - 2;
-    this.mouseInteractionBuffer!.height = height - 2;
-
     this.setupKeybinds(this.renderer);
-  }
-
-  private createMouseInteractionBuffer(): void {
-    if (this.mouseInteractionBuffer) return;
-
-    this.mouseInteractionBuffer = new MouseInteractionFrameBuffer(
-      this.renderer,
-      `${this.id}-mouse-interaction`,
-      RGBA.fromHex(LattePalette.surface0),
-    );
-    this.mouseInteractionBuffer.top = 0;
-    this.mouseInteractionBuffer.left = 0;
-    this.mouseInteractionBuffer.width = this.box!.width - 2;
-    this.mouseInteractionBuffer.height = this.box!.height - 2;
-
-    this.box!.add(this.mouseInteractionBuffer);
   }
 
   private createEdgeLayer(): void {
@@ -563,10 +386,6 @@ export class FlowPane extends Pane {
   }
 
   override destroy(): void {
-    if (this.mouseInteractionBuffer) {
-      this.mouseInteractionBuffer.destroy();
-      this.mouseInteractionBuffer = null;
-    }
     if (this.edgeLayer) {
       this.edgeLayer.destroy();
       this.edgeLayer = null;
