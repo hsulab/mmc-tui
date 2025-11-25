@@ -150,8 +150,8 @@ export function DraggableBox(
         dragOffsetX = event.x - this.x;
         dragOffsetY = event.y - this.y;
         this.zIndex = nextZIndex++;
-        this.backgroundColor = dragBg;
-        this.borderColor = dragBorderColor;
+        // this.backgroundColor = dragBg;
+        // this.borderColor = dragBorderColor;
         setSelected(this, !isSelected);
         if (isSelected) {
           props.onSelect?.(this as unknown as BoxRenderable);
@@ -170,6 +170,9 @@ export function DraggableBox(
           if (hasDragged) {
             props.onMove?.(this as unknown as BoxRenderable);
           }
+
+          setSelected(this, !isSelected);
+          props.onDeselect?.(this as unknown as BoxRenderable);
 
           isDragging = false;
           pointerDown = false;
