@@ -4,7 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.ts"
+    "dev:frontend": "bun run --watch src/index.ts",
+    "dev:backend": "uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev": "concurrently \"bun run dev:backend\" \"bun run dev:frontend\"",
+    "build": "bun build --compile src/index.ts --outfile ./build/mmc-tui"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -13,6 +16,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@opentui/core": "^0.1.49"
+    "@opentui/core": "^0.1.50",
+    "concurrently": "^9.2.1"
   }
 }

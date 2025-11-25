@@ -1,6 +1,17 @@
 # dependencies (bun install)
 node_modules
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+
 # output
 out
 dist

@@ -253,7 +253,7 @@ export class FlowPane extends Pane {
             if (event.button === 0 && this.isRunButtonPressed) {
               this.isRunButtonPressed = false;
               this.runButton!.backgroundColor = baseColor;
-              this.runWorkflow();
+              void this.runWorkflow();
               event.stopPropagation();
             }
             break;
@@ -293,7 +293,7 @@ export class FlowPane extends Pane {
       innerTop + Math.max(0, innerHeight - this.runButton.height - padding);
   }
 
-  private runWorkflow(): void {
+  private async runWorkflow(): Promise<void> {
     if (this.nodes.length === 0) {
       console.log(`No nodes to run in FlowPane ${this.id}`);
       return;
@@ -349,7 +349,29 @@ export class FlowPane extends Pane {
       this.runNodePlaceholder(node, index + 1, executionOrder.length),
     );
 
+    await this.sendRunRequest();
+
     console.log(`Workflow run completed for FlowPane ${this.id}`);
+  }
+
+  private async sendRunRequest(): Promise<void> {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/run", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const data = (await response.json()) as { result?: string } | string;
+      const resultMessage =
+        typeof data === "string" ? data : (data.result ?? JSON.stringify(data));
+
+      console.log(`[flow] Backend response: ${resultMessage}`);
+    } catch (error) {
+      console.error(`[flow] Failed to reach backend: ${String(error)}`);
+    }
   }
 
   private runNodePlaceholder(
