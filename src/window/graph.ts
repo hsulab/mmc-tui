@@ -10,6 +10,13 @@ import {
   type MouseEvent,
 } from "@opentui/core";
 
+import { LattePalette } from "../palette.ts";
+
+export type SelectableBoxRenderable = BoxRenderable & {
+  isSelected: () => boolean;
+  setSelected: (selected: boolean) => void;
+};
+
 let nextZIndex = 1001;
 
 export function DraggableBox(
@@ -20,6 +27,10 @@ export function DraggableBox(
     height: number;
     color: RGBA;
     label: string;
+    onSelect?: (box: BoxRenderable) => void;
+    onDeselect?: (box: BoxRenderable) => void;
+    onMove?: (box: BoxRenderable) => void;
+    selectedBorderColor?: RGBA;
   },
   children?: VChild,
 ) {
@@ -37,6 +48,8 @@ export function DraggableBox(
   );
 
   let isDragging = false;
+  let pointerDown = false;
+  let hasDragged = false;
   let gotText = "";
   let scrollText = "";
   let scrollTimestamp = 0;
@@ -59,6 +72,10 @@ export function DraggableBox(
     props.color.b * 1.2,
     0.5,
   );
+
+  const selectedBorderColor =
+    props.selectedBorderColor ?? RGBA.fromHex(LattePalette.red);
+  let isSelected = false;
 
   let renderAfter = function (
     this: Renderable,
@@ -115,31 +132,54 @@ export function DraggableBox(
       );
     }
   };
+  const applySelectionBorder = (target: BoxRenderable) => {
+    target.borderColor = isSelected ? selectedBorderColor : originalBorderColor;
+  };
+
+  const setSelected = (target: BoxRenderable, selected: boolean) => {
+    isSelected = selected;
+    applySelectionBorder(target);
+  };
+
   let onMouse = function (this: BoxRenderable, event: MouseEvent): void {
     switch (event.type) {
       case "down":
         gotText = "";
-        isDragging = true;
+        pointerDown = true;
+        hasDragged = false;
         dragOffsetX = event.x - this.x;
         dragOffsetY = event.y - this.y;
         this.zIndex = nextZIndex++;
         this.backgroundColor = dragBg;
         this.borderColor = dragBorderColor;
+        setSelected(this, !isSelected);
+        if (isSelected) {
+          props.onSelect?.(this as unknown as BoxRenderable);
+        } else {
+          props.onDeselect?.(this as unknown as BoxRenderable);
+        }
         event.stopPropagation();
         break;
 
       case "drag-end":
-        if (isDragging) {
-          isDragging = false;
+        if (pointerDown) {
           this.zIndex = 100;
           this.backgroundColor = originalBg;
-          this.borderColor = originalBorderColor;
+          applySelectionBorder(this);
+
+          if (hasDragged) {
+            props.onMove?.(this as unknown as BoxRenderable);
+          }
+
+          isDragging = false;
+          pointerDown = false;
+          hasDragged = false;
           event.stopPropagation();
         }
         break;
 
       case "drag":
-        if (isDragging) {
+        if (pointerDown) {
           const parent = this.parent as BoxRenderable | null;
           const parentX = parent?.x ?? 0;
           const parentY = parent?.y ?? 0;
@@ -161,8 +201,17 @@ export function DraggableBox(
           const boundedX = Math.max(innerLeft, Math.min(newX, innerRight));
           const boundedY = Math.max(innerTop, Math.min(newY, innerBottom));
 
-          this.x = boundedX;
-          this.y = boundedY;
+          const moved = this.x !== boundedX || this.y !== boundedY;
+
+          if (moved) {
+            hasDragged = true;
+            isDragging = true;
+
+            this.x = boundedX;
+            this.y = boundedY;
+
+            props.onMove?.(this as unknown as BoxRenderable);
+          }
 
           event.stopPropagation();
         }
@@ -217,7 +266,7 @@ export function DraggableBox(
     }
   };
 
-  return Box(
+  const box = Box(
     {
       ...props,
       position: "absolute",
@@ -236,5 +285,11 @@ export function DraggableBox(
       onMouse: onMouse,
     },
     children,
-  );
+  ) as SelectableBoxRenderable;
+
+  const selectable = box as SelectableBoxRenderable;
+  selectable.isSelected = () => isSelected;
+  selectable.setSelected = (selected: boolean) => setSelected(box, selected);
+
+  return selectable;
 }

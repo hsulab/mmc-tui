@@ -16,7 +16,9 @@ import {
 
 import { Pane, type Rect } from "./base.ts";
 import { LattePalette } from "../palette.ts";
-import { DraggableBox } from "./graph.ts";
+import { DraggableBox, type SelectableBoxRenderable } from "./graph.ts";
+
+type NodeEdge = { from: BoxRenderable; to: BoxRenderable };
 
 interface TrailCell {
   x: number;
@@ -171,11 +173,94 @@ class MouseInteractionFrameBuffer extends FrameBufferRenderable {
   }
 }
 
+class EdgeFrameBuffer extends FrameBufferRenderable {
+  private readonly BACKGROUND_COLOR: RGBA;
+  private readonly LINE_COLOR = RGBA.fromHex(LattePalette.subtext0);
+
+  constructor(
+    renderer: CliRenderer,
+    id: string,
+    private readonly edgesProvider: () => NodeEdge[],
+    backgroundColor: RGBA,
+  ) {
+    super(renderer, {
+      id,
+      width: renderer.terminalWidth,
+      height: renderer.terminalHeight,
+      zIndex: 90,
+    });
+
+    this.BACKGROUND_COLOR = backgroundColor;
+  }
+
+  protected override renderSelf(buffer: OptimizedBuffer): void {
+    this.frameBuffer.clear(this.BACKGROUND_COLOR);
+
+    for (const edge of this.edgesProvider()) {
+      this.drawDottedLine(
+        Math.round(edge.from.x + edge.from.width / 2) - this.x,
+        Math.round(edge.from.y + edge.from.height / 2) - this.y,
+        Math.round(edge.to.x + edge.to.width / 2) - this.x,
+        Math.round(edge.to.y + edge.to.height / 2) - this.y,
+      );
+    }
+
+    super.renderSelf(buffer);
+  }
+
+  private drawDottedLine(x0: number, y0: number, x1: number, y1: number) {
+    let currentX = x0;
+    let currentY = y0;
+
+    const dx = Math.abs(x1 - x0);
+    const sx = x0 < x1 ? 1 : -1;
+    const dy = -Math.abs(y1 - y0);
+    const sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    let drawDot = true;
+
+    while (true) {
+      if (
+        drawDot &&
+        currentX >= 0 &&
+        currentY >= 0 &&
+        currentX < this.width &&
+        currentY < this.height
+      ) {
+        this.frameBuffer.setCell(
+          currentX,
+          currentY,
+          "⠒",
+          this.LINE_COLOR,
+          this.BACKGROUND_COLOR,
+        );
+      }
+
+      if (currentX === x1 && currentY === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) {
+        err += dy;
+        currentX += sx;
+      }
+      if (e2 <= dx) {
+        err += dx;
+        currentY += sy;
+      }
+
+      drawDot = !drawDot;
+    }
+  }
+}
+
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
   private mouseInteractionBuffer: MouseInteractionFrameBuffer | null = null;
-  private boxes: BoxRenderable[] = [];
+  private edgeLayer: EdgeFrameBuffer | null = null;
+  private boxes: SelectableBoxRenderable[] = [];
+
+  private edges: NodeEdge[] = [];
+  private pendingConnectionNode: SelectableBoxRenderable | null = null;
 
   private nodeIndex: number = 0;
 
@@ -208,6 +293,7 @@ export class FlowPane extends Pane {
   ) {
     super(renderer, id, active, rect);
 
+    this.createEdgeLayer();
     this.createMouseInteractionBuffer();
 
     this.createSelector();
@@ -222,6 +308,11 @@ export class FlowPane extends Pane {
     super.draw();
 
     const { width, height } = this.rect;
+
+    this.edgeLayer!.top = 0;
+    this.edgeLayer!.left = 0;
+    this.edgeLayer!.width = width - 2;
+    this.edgeLayer!.height = height - 2;
 
     this.mouseInteractionBuffer!.top = 0;
     this.mouseInteractionBuffer!.left = 0;
@@ -245,6 +336,23 @@ export class FlowPane extends Pane {
     this.mouseInteractionBuffer.height = this.box!.height - 2;
 
     this.box!.add(this.mouseInteractionBuffer);
+  }
+
+  private createEdgeLayer(): void {
+    if (this.edgeLayer) return;
+
+    this.edgeLayer = new EdgeFrameBuffer(
+      this.renderer,
+      `${this.id}-edges`,
+      () => this.edges,
+      RGBA.fromHex(LattePalette.surface0),
+    );
+    this.edgeLayer.top = 0;
+    this.edgeLayer.left = 0;
+    this.edgeLayer.width = this.box!.width - 2;
+    this.edgeLayer.height = this.box!.height - 2;
+
+    this.box!.add(this.edgeLayer);
   }
 
   private createSelector(): void {
@@ -351,6 +459,45 @@ export class FlowPane extends Pane {
     this.nodeSelectorVisible = false;
   }
 
+  private requestEdgeRender(): void {
+    this.edgeLayer?.requestRender();
+  }
+
+  private handleNodeSelection(node: SelectableBoxRenderable): void {
+    if (this.pendingConnectionNode && this.pendingConnectionNode !== node) {
+      this.connectNodes(this.pendingConnectionNode, node);
+      this.pendingConnectionNode = null;
+    } else {
+      this.pendingConnectionNode = node;
+    }
+
+    this.requestEdgeRender();
+  }
+
+  private handleNodeDeselection(node: SelectableBoxRenderable): void {
+    if (this.pendingConnectionNode === node) {
+      this.pendingConnectionNode = null;
+    }
+
+    this.requestEdgeRender();
+  }
+
+  private connectNodes(from: BoxRenderable, to: BoxRenderable): void {
+    const key = this.edgeKey(from, to);
+    const alreadyConnected = this.edges.some(
+      (edge) => this.edgeKey(edge.from, edge.to) === key,
+    );
+
+    if (alreadyConnected) return;
+
+    this.edges.push({ from, to });
+    console.log(`Linked ${from.id} -> ${to.id} in FlowPane ${this.id}`);
+  }
+
+  private edgeKey(a: BoxRenderable, b: BoxRenderable): string {
+    return [a.id, b.id].sort().join("::");
+  }
+
   private createNodeFromSelection(value: string): void {
     this.nodeIndex++;
     const nodeId = `${this.id}-${value.toLowerCase()}-${this.nodeIndex}`;
@@ -363,12 +510,16 @@ export class FlowPane extends Pane {
       height: 5,
       label: nodeLabel,
       color: RGBA.fromHex(LattePalette.teal),
+      onSelect: (box) =>
+        this.handleNodeSelection(box as SelectableBoxRenderable),
+      onDeselect: (box) =>
+        this.handleNodeDeselection(box as SelectableBoxRenderable),
+      onMove: () => this.requestEdgeRender(),
+      selectedBorderColor: RGBA.fromHex(LattePalette.red),
     });
     this.box!.add(newBox);
-    const nodeBox = this.box!.getChildren().find(
-      (child) => child.id === nodeId,
-    ) as BoxRenderable;
-    this.boxes.push(nodeBox);
+    this.boxes.push(newBox as SelectableBoxRenderable);
+    this.requestEdgeRender();
     console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
   }
 
@@ -416,6 +567,10 @@ export class FlowPane extends Pane {
       this.mouseInteractionBuffer.destroy();
       this.mouseInteractionBuffer = null;
     }
+    if (this.edgeLayer) {
+      this.edgeLayer.destroy();
+      this.edgeLayer = null;
+    }
     if (this.selector) {
       this.selector.destroy();
       this.selector = null;
@@ -428,6 +583,8 @@ export class FlowPane extends Pane {
       this.boxes.forEach((box) => box.destroy());
       this.boxes = [];
     }
+    this.edges = [];
+    this.pendingConnectionNode = null;
     if (this.keybinds) {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
