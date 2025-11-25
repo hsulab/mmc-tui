@@ -502,7 +502,7 @@ export class FlowPane extends Pane {
     this.nodeIndex++;
     const nodeId = `${this.id}-${value.toLowerCase()}-${this.nodeIndex}`;
     const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
-    const newBox = DraggableBox({
+    const newBox = DraggableBox(this.renderer, {
       id: nodeId,
       x: this.rect.left,
       y: this.rect.top,

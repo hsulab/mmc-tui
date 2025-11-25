@@ -1,12 +1,11 @@
 import {
+  CliRenderer,
   Renderable,
   RGBA,
-  Box,
   BoxRenderable,
   createTimeline,
   OptimizedBuffer,
   type BoxOptions,
-  type VChild,
   type MouseEvent,
 } from "@opentui/core";
 
@@ -20,6 +19,7 @@ export type SelectableBoxRenderable = BoxRenderable & {
 let nextZIndex = 1001;
 
 export function DraggableBox(
+  renderer: CliRenderer,
   props: BoxOptions & {
     x: number;
     y: number;
@@ -32,7 +32,6 @@ export function DraggableBox(
     onMove?: (box: BoxRenderable) => void;
     selectedBorderColor?: RGBA;
   },
-  children?: VChild,
 ) {
   const bgColor = RGBA.fromValues(
     props.color.r,
@@ -59,19 +58,7 @@ export function DraggableBox(
   let baseWidth: number = props.width;
   let baseHeight: number = props.height;
   let originalBg: RGBA = bgColor;
-  let dragBg: RGBA = RGBA.fromValues(
-    props.color.r,
-    props.color.g,
-    props.color.b,
-    0.3,
-  );
   let originalBorderColor: RGBA = borderColor;
-  let dragBorderColor: RGBA = RGBA.fromValues(
-    props.color.r * 1.2,
-    props.color.g * 1.2,
-    props.color.b * 1.2,
-    0.5,
-  );
 
   const selectedBorderColor =
     props.selectedBorderColor ?? RGBA.fromHex(LattePalette.red);
@@ -150,8 +137,6 @@ export function DraggableBox(
         dragOffsetX = event.x - this.x;
         dragOffsetY = event.y - this.y;
         this.zIndex = nextZIndex++;
-        // this.backgroundColor = dragBg;
-        // this.borderColor = dragBorderColor;
         setSelected(this, !isSelected);
         if (isSelected) {
           props.onSelect?.(this as unknown as BoxRenderable);
@@ -269,26 +254,23 @@ export function DraggableBox(
     }
   };
 
-  const box = Box(
-    {
-      ...props,
-      position: "absolute",
-      left: props.x,
-      top: props.y,
-      width: props.width,
-      height: props.height,
-      backgroundColor: bgColor,
-      borderColor: borderColor,
-      borderStyle: "rounded",
-      title: props.label,
-      titleAlignment: "left",
-      border: true,
-      zIndex: 100,
-      renderAfter: renderAfter,
-      onMouse: onMouse,
-    },
-    children,
-  ) as SelectableBoxRenderable;
+  const box = new BoxRenderable(renderer, {
+    ...props,
+    position: "absolute",
+    left: props.x,
+    top: props.y,
+    width: props.width,
+    height: props.height,
+    backgroundColor: bgColor,
+    borderColor: borderColor,
+    borderStyle: "rounded",
+    title: props.label,
+    titleAlignment: "left",
+    border: true,
+    zIndex: 100,
+    renderAfter: renderAfter,
+    onMouse: onMouse,
+  });
 
   const selectable = box as SelectableBoxRenderable;
   selectable.isSelected = () => isSelected;
