@@ -137,7 +137,7 @@ export class MainMenu {
 
     this.positionAppName();
 
-    // add selection
+    // add main menu selection
     this.selector = new SelectRenderable(renderer, {
       id: "main-menu-selector",
       top: +1,
@@ -162,10 +162,6 @@ export class MainMenu {
     if (!this.menuSelectorListener) {
       this.menuSelectorListener = (_: number, option: SelectOption) => {
         console.log(`Menu item activated: ${option.name}`);
-        setTimeout(() => {
-          this.renderer.requestRender();
-        }, 100);
-        console.log(`timeout triggered`);
         switch (option.value) {
           case "create_new":
             void this.showProjectNamePrompt();
@@ -177,7 +173,7 @@ export class MainMenu {
             this.onAction(option.value);
             break;
         }
-        this.selector!.blur(); // Blur the selector on item selection
+        // this.selector!.blur(); // Blur the selector on item selection
       };
       this.selector.on(
         SelectRenderableEvents.ITEM_SELECTED,
@@ -187,9 +183,8 @@ export class MainMenu {
 
     this.selector.focus();
 
-    //
+    // add recent projects selector
     this.createRecentProjectSelector();
-    // this.showRecentProjects();
   }
 
   public updateLayout(width: number, height: number) {
@@ -411,8 +406,6 @@ export class MainMenu {
       this.projectPrompt.visible = false;
     }
     this.removeOverlayKeyHandler();
-
-    this.selector?.focus();
   }
 
   private createRecentProjectSelector() {
@@ -496,39 +489,39 @@ export class MainMenu {
   }
 
   private showRecentProjects() {
-    this.hideMenuComponents();
     this.hideProjectPrompt();
 
-    // this.renderer.requestRender();
-    this.recentProjectsSelector!.requestRender();
+    let options = this.loadRecentProjects();
+    const hasProjects = options.some((option) => option.value);
 
-    // let options = this.loadRecentProjects();
-    // const hasProjects = options.some((option) => option.value);
-    let options = [
-      { name: "Loading...", value: "jijiji", description: "" },
-      // { name: "cao", value: "cao", description: "cao" },
-      // { name: "bao", value: "bao", description: "bao" },
-    ];
+    setTimeout(() => {
+      this.recentProjectsContainer!.visible = true;
 
-    let optionsToShow: string[] = this.recentProjectsSelector!.options.map(
-      (opt) => opt.name,
-    );
-    console.log(`Recent projects to show before: ${optionsToShow.join(", ")}`);
-    this.recentProjectsSelector!.options = options;
-    optionsToShow = this.recentProjectsSelector!.options.map((opt) => opt.name);
-    console.log(`Recent projects to show after: ${optionsToShow.join(", ")}`);
-    this.recentProjectsContainer!.visible = true;
+      this.recentProjectsSelector!.options = options;
+      this.recentProjectsSelector!.visible = true;
+      this.recentProjectsSelector!.focus();
 
-    this.recentProjectsSelector!.focus();
+      this.positionRecentProjects();
+    }, 0);
 
-    // this.positionRecentProjects();
+    if (!hasProjects) {
+      this.recentProjectsSelector!.blur();
+    }
 
-    // if (!hasProjects) {
-    //   this.recentProjectsSelector!.blur();
-    // }
-
-    // this.addOverlayKeyHandler();
+    this.addOverlayKeyHandler();
     this.renderer.requestRender();
+  }
+
+  private hideRecentProjects() {
+    if (this.recentProjectsSelector) {
+      this.recentProjectsSelector.blur();
+      this.recentProjectsSelector.visible = false;
+    }
+    if (this.recentProjectsContainer) {
+      this.recentProjectsContainer.visible = false;
+    }
+
+    this.removeOverlayKeyHandler();
   }
 
   private loadRecentProjects(): SelectOption[] {
@@ -565,19 +558,6 @@ export class MainMenu {
     }
   }
 
-  private hideRecentProjects() {
-    if (this.recentProjectsSelector) {
-      this.recentProjectsSelector.blur();
-      this.recentProjectsSelector.visible = false;
-    }
-    if (this.recentProjectsContainer) {
-      this.recentProjectsContainer.visible = false;
-    }
-
-    this.removeOverlayKeyHandler();
-    // this.selector?.focus();
-  }
-
   private addOverlayKeyHandler() {
     if (this.overlayKeyHandler) return;
 
@@ -585,6 +565,7 @@ export class MainMenu {
       if (key.name === "escape") {
         this.hideProjectPrompt();
         this.hideRecentProjects();
+        this.selector?.focus();
       }
     };
 
@@ -618,14 +599,12 @@ export class MainMenu {
     if (this.container) {
       this.container.visible = false;
     }
-    // this.hideProjectPrompt();
-    // this.hideRecentProjects();
     if (this.selector) {
       this.selector.visible = false;
     }
-    // Trigger a re-render so the hidden menu components are cleared from the screen
-    // before other UI elements (like the window manager) draw over the same area.
-    // this.renderer.requestRender();
+    // Hide overlays if any
+    this.hideProjectPrompt();
+    this.hideRecentProjects();
   }
 
   public destroyMenuComponents() {
