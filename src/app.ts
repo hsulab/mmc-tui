@@ -51,6 +51,7 @@ export class MMCTui {
         this.panes.height = height - 1; // Leave space for status bar
         this.panes.updateLayout();
       }
+      this.statusBar?.updateLayout(width, height);
     });
   }
 

@@ -72,4 +72,9 @@ export class StatusBar {
       this.statusText.content = ` Status: ${message} `;
     }
   }
+
+  public updateLayout(width: number, height: number): void {
+    this.statusText!.top = height - 1;
+    this.statusText!.width = width;
+  }
 }
