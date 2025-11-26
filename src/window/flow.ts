@@ -116,6 +116,8 @@ export class FlowPane extends Pane {
 
     this.createRunSpinner();
 
+    this.setStatusMessage("Ready");
+
     this.nodes = []; // TODO: If we have some init nodes?
   }
 
@@ -126,14 +128,12 @@ export class FlowPane extends Pane {
   override draw(): void {
     super.draw();
 
-    const { width, height } = this.rect;
-
-    this.edgeLayer!.top = 0;
+    this.edgeLayer!.top = this.contentTop;
     this.edgeLayer!.left = 0;
-    this.edgeLayer!.width = width - 2;
-    this.edgeLayer!.height = height - 2;
+    this.edgeLayer!.width = this.contentWidth;
+    this.edgeLayer!.height = this.contentHeight;
 
-    this.updateRunButtonPosition();
+    this.updateRunControlLayout();
 
     this.setupKeybinds(this.renderer);
   }
@@ -147,10 +147,10 @@ export class FlowPane extends Pane {
       () => this.edges,
       RGBA.fromHex(LattePalette.surface0),
     );
-    this.edgeLayer.top = 0;
+    this.edgeLayer.top = this.contentTop;
     this.edgeLayer.left = 0;
-    this.edgeLayer.width = this.box!.width - 2;
-    this.edgeLayer.height = this.box!.height - 2;
+    this.edgeLayer.width = this.contentWidth;
+    this.edgeLayer.height = this.contentHeight;
 
     this.box!.add(this.edgeLayer);
   }
@@ -225,9 +225,12 @@ export class FlowPane extends Pane {
     const containerHeight = Math.max(8, selectHeight + 2);
 
     const innerLeft = this.rect.left + 1;
-    const innerTop = this.rect.top + 1;
+    const innerTop = this.rect.top + 1 + this.statusBarHeight;
     const innerWidth = Math.max(0, this.rect.width - 2);
-    const innerHeight = Math.max(0, this.rect.height - 2);
+    const innerHeight = Math.max(
+      0,
+      this.rect.height - 2 - this.statusBarHeight,
+    );
 
     const newWidth = Math.min(containerWidth, innerWidth);
     const newHeight = Math.min(containerHeight, innerHeight);
@@ -260,7 +263,7 @@ export class FlowPane extends Pane {
   }
 
   private createRunButton(): void {
-    if (this.runButton) return;
+    if (this.runButton || !this.statusBar) return;
 
     const baseColor = RGBA.fromInts(0, 0, 0, 0);
     const downColor = RGBA.fromHex(LattePalette.red);
@@ -269,20 +272,20 @@ export class FlowPane extends Pane {
     this.runButton = new BoxRenderable(this.renderer, {
       id: `${this.id}-run-button`,
       position: "absolute",
-      top: this.rect.top - 2,
-      left: this.rect.left + this.rect.width - 12,
-      width: 10,
-      height: 3,
-      border: true,
-      borderStyle: "rounded",
+      top: 0,
+      left: 0,
+      width: 8,
+      height: this.statusBarHeight,
+      border: false,
+      borderStyle: "single",
       borderColor: LattePalette.peach,
       backgroundColor: baseColor,
       zIndex: 300,
       renderAfter: function (buffer) {
-        const label = "Run";
+        const label = " Run ";
         const textX =
           this.x + Math.max(1, Math.floor((this.width - label.length) / 2));
-        const textY = this.y + Math.floor(this.height / 2);
+        const textY = this.y;
         buffer.drawText(label, textX, textY, RGBA.fromHex(LattePalette.text));
       },
       onMouse: (event) => {
@@ -315,21 +318,21 @@ export class FlowPane extends Pane {
       },
     });
 
-    this.box!.add(this.runButton);
+    this.statusBar.add(this.runButton);
   }
 
   private createRunSpinner(): void {
-    if (this.runSpinner) return;
+    if (this.runSpinner || !this.statusBar) return;
 
     const baseColor = RGBA.fromInts(0, 0, 0, 0);
 
     this.runSpinner = new BoxRenderable(this.renderer, {
       id: `${this.id}-run-spinner`,
       position: "absolute",
-      top: this.rect.top - 2,
-      left: this.rect.left + this.rect.width - 14,
+      top: 0,
+      left: 0,
       width: 2,
-      height: 3,
+      height: this.statusBarHeight,
       border: false,
       backgroundColor: baseColor,
       zIndex: 301,
@@ -340,53 +343,36 @@ export class FlowPane extends Pane {
         const textX =
           this.runSpinner!.x +
           Math.max(0, Math.floor((this.runSpinner!.width - 1) / 2));
-        const textY =
-          this.runSpinner!.y + Math.floor(this.runSpinner!.height / 2);
+        const textY = this.runSpinner!.y;
         buffer.drawText(frame, textX, textY, RGBA.fromHex(LattePalette.green));
       },
     });
 
     this.runSpinner.visible = false;
-    this.box!.add(this.runSpinner);
+    this.statusBar.add(this.runSpinner);
   }
 
-  private updateRunButtonPosition(): void {
-    if (!this.runButton) return;
+  private updateRunControlLayout(): void {
+    if (!this.statusBar || !this.runButton || !this.runSpinner) return;
 
     const padding = 1;
-    const innerLeft = this.rect.left + 1;
-    const innerTop = this.rect.top + 1;
-    const innerWidth = Math.max(0, this.rect.width - 2);
-    const innerHeight = Math.max(0, this.rect.height - 2);
+    const barWidth = this.statusBar.width;
 
-    const buttonWidth = Math.max(1, Math.min(10, innerWidth));
-    const buttonHeight = Math.max(1, Math.min(3, innerHeight));
-
+    const buttonWidth = Math.max(6, Math.min(10, barWidth));
     this.runButton.width = buttonWidth;
-    this.runButton.height = buttonHeight;
-    this.runButton.left =
-      innerLeft + Math.max(0, innerWidth - this.runButton.width - padding);
-    this.runButton.top = innerTop + Math.max(0, padding);
+    this.runButton.height = this.statusBarHeight;
 
-    if (this.runSpinner) {
-      const spinnerPadding = 1;
-      const spinnerWidth = Math.max(1, Math.min(2, innerWidth));
-      const spinnerHeight = buttonHeight;
+    const spinnerWidth = this.runSpinner.width;
+    this.runSpinner.height = this.statusBarHeight;
 
-      this.runSpinner.width = spinnerWidth;
-      this.runSpinner.height = spinnerHeight;
-      this.runSpinner.top = this.runButton.top;
-      this.runSpinner.left =
-        innerLeft +
-        Math.max(
-          0,
-          innerWidth -
-            this.runButton.width -
-            spinnerWidth -
-            padding -
-            spinnerPadding,
-        );
-    }
+    const buttonLeft = Math.max(0, barWidth - buttonWidth - padding);
+    const spinnerLeft = Math.max(0, buttonLeft - spinnerWidth - padding);
+
+    this.runButton.left = buttonLeft;
+    this.runButton.top = 0;
+
+    this.runSpinner.left = spinnerLeft;
+    this.runSpinner.top = 0;
   }
 
   private async runWorkflow(): Promise<void> {
@@ -400,6 +386,7 @@ export class FlowPane extends Pane {
       return;
     }
 
+    this.setStatusMessage("Running workflow...");
     this.startRunSpinner();
 
     console.log(`Starting workflow run for FlowPane ${this.id}`);
@@ -458,6 +445,7 @@ export class FlowPane extends Pane {
       console.log(`Workflow run completed for FlowPane ${this.id}`);
     } finally {
       this.stopRunSpinner();
+      this.setStatusMessage("Ready");
     }
   }
 
@@ -634,7 +622,7 @@ export class FlowPane extends Pane {
       x:
         this.rect.left +
         Math.max(0, Math.floor(((this.rect.width - 18) / 2) * Math.random())),
-      y: this.rect.top,
+      y: this.rect.top + 2,
       width: 18,
       height: 5,
       label: nodeLabel,

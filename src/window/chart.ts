@@ -34,16 +34,16 @@ export class ChartPane extends Pane {
       this.renderer,
       {
         id: `chart-canvas-${this.id}`,
-        width: this.rect.width - 8,
-        height: this.rect.height - 4,
+        width: this.contentWidth,
+        height: this.contentHeight,
         useBraille: this.preferBraille,
       },
       RGBA.fromHex(LattePalette.surface0),
     );
-    this.canvas.top = 0;
+    this.canvas.top = this.contentTop;
     this.canvas.left = 0;
-    this.canvas.width = this.rect.width - 2;
-    this.canvas.height = this.rect.height - 2;
+    this.canvas.width = this.contentWidth;
+    this.canvas.height = this.contentHeight;
     this.canvas.setPlotFunction((x: number) => x * x + x, {
       xMin: -1,
       xMax: 1,
@@ -58,12 +58,10 @@ export class ChartPane extends Pane {
     console.log();
     console.log(`${this.canvas}`);
 
-    const { width, height } = this.rect;
-
-    this.canvas!.top = 0;
+    this.canvas!.top = this.contentTop;
     this.canvas!.left = 0;
-    this.canvas!.width = width - 2;
-    this.canvas!.height = height - 2;
+    this.canvas!.width = this.contentWidth;
+    this.canvas!.height = this.contentHeight;
 
     this.canvas!.renderPlot();
 
