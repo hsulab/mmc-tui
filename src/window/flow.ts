@@ -57,23 +57,46 @@ export class FlowPane extends Pane {
   private selectorContainer: BoxRenderable | null = null;
   private selector: SelectRenderable | null = null;
   private nodeSelectorVisible: boolean = false;
-  private nodeOptions: SelectOption[] = [
+  private readonly nodeDefinitions: Record<
+    string,
     {
-      name: "Build",
-      value: "Build",
-      description: "  Build structures",
+      description: string;
+      maxIn: number;
+      maxOut: number;
+      allowedOutgoing: string[];
+      allowedIncoming: string[];
+    }
+  > = {
+    Build: {
+      description: "  Build structures (0 in / 1 out)",
+      maxIn: 0,
+      maxOut: 1,
+      allowedOutgoing: ["Compute"],
+      allowedIncoming: [],
     },
-    {
-      name: "Compute",
-      value: "Compute",
-      description: "  Run calculation/simulation",
+    Compute: {
+      description: "  Run calculation/simulation (1 in / 1 out)",
+      maxIn: 1,
+      maxOut: 1,
+      allowedOutgoing: ["Validate"],
+      allowedIncoming: ["Build"],
     },
-    {
-      name: "Validate",
-      value: "Validate",
-      description: "  Analyze and verify data",
+    Validate: {
+      description: "  Analyze and verify data (1 in / 0 out)",
+      maxIn: 1,
+      maxOut: 0,
+      allowedOutgoing: [],
+      allowedIncoming: ["Compute"],
     },
-  ];
+  };
+
+  private nodeOptions: SelectOption[] = Object.entries(
+    this.nodeDefinitions,
+  ).map(([name, definition]) => ({
+    name,
+    value: name,
+    description: definition.description,
+  }));
 
   constructor(
     renderer: CliRenderer,
@@ -533,6 +556,50 @@ export class FlowPane extends Pane {
     from: SelectableBoxRenderable,
     to: SelectableBoxRenderable,
   ): void {
+    // Check connection rules
+    const fromDetail = this.nodeDetails.get(from);
+    const toDetail = this.nodeDetails.get(to);
+
+    if (!fromDetail || !toDetail) return;
+
+    const fromDefinition = this.nodeDefinitions[fromDetail.type];
+    const toDefinition = this.nodeDefinitions[toDetail.type];
+
+    if (!fromDefinition || !toDefinition) return;
+
+    if (!fromDefinition.allowedOutgoing.includes(toDetail.type)) {
+      console.log(
+        `Cannot connect ${fromDetail.type} to ${toDetail.type}: outgoing rules do not allow this link`,
+      );
+      return;
+    }
+
+    if (!toDefinition.allowedIncoming.includes(fromDetail.type)) {
+      console.log(
+        `Cannot connect ${fromDetail.type} to ${toDetail.type}: incoming rules for target disallow this link`,
+      );
+      return;
+    }
+
+    const outgoingCount = this.edges.filter(
+      (edge) => edge.from === from,
+    ).length;
+    if (outgoingCount >= fromDefinition.maxOut) {
+      console.log(
+        `${fromDetail.label} cannot have more than ${fromDefinition.maxOut} outgoing connection(s)`,
+      );
+      return;
+    }
+
+    const incomingCount = this.edges.filter((edge) => edge.to === to).length;
+    if (incomingCount >= toDefinition.maxIn) {
+      console.log(
+        `${toDetail.label} cannot accept more than ${toDefinition.maxIn} incoming connection(s)`,
+      );
+      return;
+    }
+
+    // Check for existing connection
     const key = this.edgeKey(from, to);
     const alreadyConnected = this.edges.some(
       (edge) => this.edgeKey(edge.from, edge.to) === key,
@@ -547,7 +614,7 @@ export class FlowPane extends Pane {
   }
 
   private edgeKey(a: BoxRenderable, b: BoxRenderable): string {
-    return [a.id, b.id].sort().join("::");
+    return `${a.id}->${b.id}`;
   }
 
   private createNodeFromSelection(value: string): void {
