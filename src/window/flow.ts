@@ -241,6 +241,10 @@ export class FlowPane extends Pane {
     this.runButton.top = this.rect.top;
     this.runButton.left = this.rect.left + buttonLeft;
 
+    this.runButton.borderColor = this.active
+      ? LattePalette.peach
+      : LattePalette.teal;
+
     // Adjust spinner position
     const spinnerWidth = this.runSpinner.width;
     const spinnerHeight = Math.max(
