@@ -2,9 +2,7 @@ import { CliRenderer, BoxRenderable, RGBA } from "@opentui/core";
 
 import { LattePalette } from "../palette.ts";
 
-export type Direction = "horizontal" | "vertical";
-
-export type Rect = { top: number; left: number; width: number; height: number };
+import type { Direction, Rect } from "../ui/geometry.ts";
 
 export abstract class Node {
   abstract draw(): void;

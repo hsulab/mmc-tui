@@ -1,6 +1,7 @@
 import { CliRenderer, RGBA } from "@opentui/core";
 
-import { Pane, type Rect } from "./base.ts";
+import type { Rect } from "../ui/geometry.ts";
+import { Pane } from "./base.ts";
 
 import { LattePalette } from "../palette.ts";
 

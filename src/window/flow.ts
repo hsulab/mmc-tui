@@ -6,12 +6,11 @@ import {
   RGBA,
   CliRenderer,
   BoxRenderable,
-  SelectRenderable,
-  SelectRenderableEvents,
   type SelectOption,
 } from "@opentui/core";
 
-import { Pane, type Rect } from "./base.ts";
+import type { Rect } from "../ui/geometry.ts";
+import { Pane } from "./base.ts";
 import { LattePalette } from "../palette.ts";
 import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
 import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
