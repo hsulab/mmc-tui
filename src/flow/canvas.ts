@@ -77,7 +77,8 @@ export class FlowCanvas {
     contentHeight: number,
   ): void {
     this.rect = rect;
-    this.contentOrigin = { x: rect.left, y: rect.top + contentTop };
+    // this.contentOrigin = { x: rect.left, y: rect.top + contentTop };
+    this.contentOrigin = { x: 0, y: 0 };
 
     this.edgeLayer.top = 0;
     this.edgeLayer.left = 0;
@@ -99,19 +100,26 @@ export class FlowCanvas {
   }
 
   public createNode(value: string): SelectableBoxRenderable {
+    console.log(
+      `before creating node ${this.rect.top} ${this.rect.left} ${this.rect.width} ${this.rect.height}`,
+    );
     this.nodeIndex++;
     const nodeId = `${this.paneId}-${value.toLowerCase()}-${this.nodeIndex}`;
     const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
 
+    const x =
+      this.rect.left +
+      Math.max(
+        0,
+        Math.floor(((this.rect.width - NodeBoxWidth) / 4) * Math.random()),
+      );
+    const y = this.rect.top + 3;
+    console.log(`calculating node ${nodeId} at screen position (${x}, ${y})`);
+
     const newBox = DraggableBox(this.renderer, {
       id: nodeId,
-      x:
-        this.rect.left +
-        Math.max(
-          0,
-          Math.floor(((this.rect.width - NodeBoxWidth) / 2) * Math.random()),
-        ),
-      y: this.rect.top + 3,
+      top: y,
+      left: x,
       width: NodeBoxWidth,
       height: NodeBoxHeight,
       label: nodeLabel,
@@ -127,6 +135,9 @@ export class FlowCanvas {
       },
       selectedBorderColor: RGBA.fromHex(LattePalette.red),
     });
+    console.log(
+      `creating node ${nodeId} at screen position (${newBox.x}, ${newBox.y})`,
+    );
 
     this.parent.add(newBox);
     this.nodes.push(newBox as SelectableBoxRenderable);
@@ -139,6 +150,10 @@ export class FlowCanvas {
       newBox as SelectableBoxRenderable,
       this.screenToWorld(newBox.x, newBox.y),
     );
+    console.log(
+      `transforming node ${nodeId} at screen position (${newBox.x}, ${newBox.y})`,
+    );
+
     this.applyViewTransform();
     this.requestEdgeRender();
     console.log(`New ${nodeLabel} node created in FlowPane ${this.paneId}`);

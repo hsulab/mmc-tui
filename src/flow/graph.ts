@@ -21,8 +21,8 @@ let nextZIndex = 1001;
 export function DraggableBox(
   renderer: CliRenderer,
   props: BoxOptions & {
-    x: number;
-    y: number;
+    top: number;
+    left: number;
     width: number;
     height: number;
     color: RGBA;
@@ -261,10 +261,6 @@ export function DraggableBox(
   const box = new BoxRenderable(renderer, {
     ...props,
     position: "absolute",
-    left: props.x,
-    top: props.y,
-    width: props.width,
-    height: props.height,
     backgroundColor: bgColor,
     borderColor: borderColor,
     borderStyle: "rounded",
