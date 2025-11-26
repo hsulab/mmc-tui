@@ -32,6 +32,8 @@ export class FlowCanvas {
 
   private readonly spinnerSize: SpinnerSize;
 
+  private readonly onNodeSelected?: (node: SelectableBoxRenderable) => void;
+
   private panOffset = { x: 0, y: 0 };
   private zoomLevel = 1;
   private readonly minZoom = 0.5;
@@ -50,9 +52,11 @@ export class FlowCanvas {
     private readonly parent: BoxRenderable,
     private readonly nodeDefinitions: Record<string, NodeSpec>,
     spinnerSize: SpinnerSize,
+    onNodeSelected?: (node: SelectableBoxRenderable) => void,
   ) {
     this.rect = rect;
     this.spinnerSize = spinnerSize;
+    this.onNodeSelected = onNodeSelected;
 
     this.edgeLayer = new EdgeFrameBuffer(
       this.renderer,
@@ -209,11 +213,19 @@ export class FlowCanvas {
   }
 
   private handleNodeSelection(node: SelectableBoxRenderable): void {
-    if (this.pendingConnectionNode && this.pendingConnectionNode !== node) {
+    const isConnecting =
+      this.pendingConnectionNode !== null &&
+      this.pendingConnectionNode !== node;
+
+    if (isConnecting) {
       this.connectNodes(this.pendingConnectionNode, node);
       this.pendingConnectionNode = null;
     } else {
       this.pendingConnectionNode = node;
+    }
+
+    if (!isConnecting) {
+      this.onNodeSelected?.(node);
     }
 
     this.requestEdgeRender();

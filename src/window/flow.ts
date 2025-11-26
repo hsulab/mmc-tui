@@ -48,15 +48,31 @@ export class FlowPane extends Pane {
 
   private readonly spinnerSize: SpinnerSize;
 
+  private readonly chartRequestHandler?: (chart: {
+    title: string;
+    xValues: number[];
+    yValues: number[];
+  }) => void;
+
+  private nodeSimulationResults: Map<string, { time: number[]; temperature: number[] }> =
+    new Map();
+
   constructor(
     renderer: CliRenderer,
     id: string,
     active: boolean = false,
     rect: Rect,
+    chartRequestHandler?: (chart: {
+      title: string;
+      xValues: number[];
+      yValues: number[];
+    }) => void,
   ) {
     super(renderer, id, active, rect);
 
     this.spinnerSize = getConfig().spinnerSize;
+
+    this.chartRequestHandler = chartRequestHandler;
 
     this.createNodeSelector();
 
@@ -103,6 +119,7 @@ export class FlowPane extends Pane {
       this.box,
       this.nodeDefinitions,
       this.spinnerSize,
+      (node) => this.handleNodeSelectedForChart(node),
     );
   }
 
@@ -410,10 +427,85 @@ export class FlowPane extends Pane {
 
     node.backgroundColor = originalColor;
     this.canvas?.setNodeSpinnerState(node, success ? "success" : "error");
+
+    if (success && nodeType === "Compute") {
+      const simulationData = await this.fetchSimulationData(node.id);
+      if (simulationData) {
+        this.nodeSimulationResults.set(node.id, simulationData);
+        console.log(
+          `[workflow] Stored simulation data for ${nodeLabel} (${node.id})`,
+        );
+        this.setStatusMessage(`Simulation ready for ${nodeLabel}`);
+      }
+    }
   }
 
   private createNodeFromSelection(value: string): void {
     this.canvas?.createNode(value);
+  }
+
+  private async fetchSimulationData(nodeId: string): Promise<
+    { time: number[]; temperature: number[] } | null
+  > {
+    const backendUrl = getBackendUrl();
+    const simulationEndpoint = `${backendUrl}/simulation/${encodeURIComponent(nodeId)}`;
+
+    try {
+      const response = await fetch(simulationEndpoint);
+      if (!response.ok) {
+        console.error(
+          `[flow] Backend request for simulation data failed with status ${response.status} (node ${nodeId})`,
+        );
+        return null;
+      }
+
+      const payload = (await response.json()) as { data?: number[][] } | number[][];
+      const series = Array.isArray(payload) ? payload : payload.data;
+
+      if (!Array.isArray(series) || series.length < 2) {
+        console.warn(`[flow] Invalid simulation payload for node ${nodeId}`);
+        return null;
+      }
+
+      const [time, temperature] = series;
+      if (!Array.isArray(time) || !Array.isArray(temperature)) {
+        console.warn(`[flow] Simulation payload missing arrays for node ${nodeId}`);
+        return null;
+      }
+
+      return {
+        time: time.map(Number),
+        temperature: temperature.map(Number),
+      };
+    } catch (error) {
+      console.error(
+        `[flow] Failed to fetch simulation data from ${simulationEndpoint}: ${String(error)}`,
+      );
+      return null;
+    }
+  }
+
+  private handleNodeSelectedForChart(node: SelectableBoxRenderable): void {
+    const detail = this.canvas?.getNodeDetail(node);
+    if (!detail) return;
+
+    const stored = this.nodeSimulationResults.get(node.id);
+    if (!stored) {
+      return;
+    }
+
+    if (!this.chartRequestHandler) {
+      console.warn(`[flow] Chart request handler is not configured`);
+      return;
+    }
+
+    this.chartRequestHandler({
+      title: `${detail.type}: ${detail.label}`,
+      xValues: stored.time,
+      yValues: stored.temperature,
+    });
+
+    this.setStatusMessage(`Plotted simulation for ${detail.label}`);
   }
 
   public setupKeybinds(renderer: CliRenderer): void {

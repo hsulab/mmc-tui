@@ -48,12 +48,18 @@ export class LayoutManager {
     });
     this.renderer.root.add(this.windowContainer);
 
-    this.root = new FlowPane(this.renderer, this.generateId(), true, {
-      top: 0,
-      left: 0,
-      width: this._width,
-      height: this._height,
-    });
+    this.root = new FlowPane(
+      this.renderer,
+      this.generateId(),
+      true,
+      {
+        top: 0,
+        left: 0,
+        width: this._width,
+        height: this._height,
+      },
+      (chart) => this.showSimulationChart(chart),
+    );
     this.root.collectPanes().forEach((p) => this.windowContainer!.add(p.box));
     this.updateLayout();
   }
@@ -157,43 +163,19 @@ export class LayoutManager {
 
   // Utilities
   splitActive(direction: Direction) {
-    const panes = this.root.collectPanes();
-    const activePane = panes.find((p) => p.active);
-    if (!activePane) return;
-
-    let rectLeft: Rect = { ...activePane.rect! };
-    if (direction === "horizontal") {
-      rectLeft.height = rectLeft.height / 2;
-    } else {
-      rectLeft.width = rectLeft.width / 2;
-    }
-    let rectRight: Rect = { ...activePane.rect! };
-    if (direction === "horizontal") {
-      rectRight.top = rectRight.top + rectRight.height / 2;
-      rectRight.height = rectRight.height / 2;
-    } else {
-      rectRight.left = rectRight.left + rectRight.width / 2;
-      rectRight.width = rectRight.width / 2;
-    }
-
-    activePane.rect = rectLeft;
-    const newPane = new ChartPane(
-      this.renderer,
-      this.generateId(),
-      true,
-      rectRight,
+    this.splitActiveWithPane(
+      direction,
+      (rect) => new Pane(this.renderer, this.generateId(), true, rect),
     );
+  }
 
-    activePane.active = false;
-
-    this.root = this.replaceNode(
-      this.root,
-      activePane,
-      new Split(direction, 0.5, activePane, newPane),
-    );
-
-    this.windowContainer!.add(newPane.box);
-
+  private showSimulationChart(chart: {
+    title: string;
+    xValues: number[];
+    yValues: number[];
+  }) {
+    const chartPane = this.openChartPane("vertical");
+    chartPane?.plotSeries(chart.title, chart.xValues, chart.yValues);
     this.updateLayout();
   }
 
@@ -313,5 +295,55 @@ export class LayoutManager {
       );
     }
     return null;
+  }
+
+  private splitActiveWithPane(
+    direction: Direction,
+    createPane: (rect: Rect) => Pane,
+  ): Pane | null {
+    const panes = this.root.collectPanes();
+    const activePane = panes.find((p) => p.active);
+    if (!activePane || !activePane.rect) return null;
+
+    let rectLeft: Rect = { ...activePane.rect };
+    if (direction === "horizontal") {
+      rectLeft.height = rectLeft.height / 2;
+    } else {
+      rectLeft.width = rectLeft.width / 2;
+    }
+    let rectRight: Rect = { ...activePane.rect };
+    if (direction === "horizontal") {
+      rectRight.top = rectRight.top + rectRight.height / 2;
+      rectRight.height = rectRight.height / 2;
+    } else {
+      rectRight.left = rectRight.left + rectRight.width / 2;
+      rectRight.width = rectRight.width / 2;
+    }
+
+    activePane.rect = rectLeft;
+    const newPane = createPane(rectRight);
+
+    activePane.active = false;
+
+    this.root = this.replaceNode(
+      this.root,
+      activePane,
+      new Split(direction, 0.5, activePane, newPane),
+    );
+
+    this.windowContainer!.add(newPane.box);
+
+    this.updateLayout();
+
+    return newPane;
+  }
+
+  private openChartPane(direction: Direction = "vertical"): ChartPane | null {
+    const pane = this.splitActiveWithPane(
+      direction,
+      (rect) => new ChartPane(this.renderer, this.generateId(), true, rect),
+    );
+
+    return pane instanceof ChartPane ? pane : null;
   }
 }

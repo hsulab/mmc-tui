@@ -11,7 +11,7 @@ export class ChartPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
   private canvas: ChartCanvasFrameBuffer | null = null;
-  private preferBraille: boolean = false;
+  private preferBraille: boolean = true;
 
   constructor(
     renderer: CliRenderer,
@@ -52,6 +52,32 @@ export class ChartPane extends Pane {
       color: RGBA.fromHex(LattePalette.red),
     });
     this.box!.add(this.canvas);
+  }
+
+  public plotSeries(title: string, xValues: number[], yValues: number[]): void {
+    this.createChart();
+
+    const length = Math.min(xValues.length, yValues.length);
+    const points: Array<{ x: number; y: number }> = [];
+
+    for (let i = 0; i < length; i++) {
+      points.push({ x: xValues[i]!, y: yValues[i]! });
+    }
+
+    if (points.length === 0) {
+      console.warn(`[chart] No points to plot for ${title}`);
+      return;
+    }
+
+    this.canvas?.setSeriesData(points, {
+      backgroundColor: RGBA.fromHex(LattePalette.surface0),
+      color: RGBA.fromHex(LattePalette.sapphire),
+    });
+
+    this.setStatusMessage(title);
+    if (this.box) {
+      this.box.title = `${this.type}-${this.id.slice(-12)} | ${title}`;
+    }
   }
 
   override draw(): void {
