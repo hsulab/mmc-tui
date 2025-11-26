@@ -293,12 +293,11 @@ export class FlowPane extends Pane {
       executionOrder.splice(0, executionOrder.length, ...nodes);
     }
 
-    executionOrder.forEach((node, index) =>
-      this.runNodePlaceholder(node, index + 1, executionOrder.length),
-    );
-
     try {
-      await this.sendRunRequest();
+      for (let i = 0; i < executionOrder.length; i++) {
+        const node = executionOrder[i];
+        await this.runNode(node!, i + 1, executionOrder.length);
+      }
 
       console.log(`Workflow run completed for FlowPane ${this.id}`);
     } finally {
@@ -321,7 +320,13 @@ export class FlowPane extends Pane {
     this.runSpinner?.setState("idle");
   }
 
-  private async sendRunRequest(): Promise<void> {
+  private async sendRunRequest(nodeInfo?: {
+    id: string;
+    type: string;
+    label: string;
+    step: number;
+    total: number;
+  }): Promise<boolean> {
     // Fetch backend URL from config
     const backendUrl = getBackendUrl();
     const runEndpoint = `${backendUrl}/run`;
@@ -330,49 +335,77 @@ export class FlowPane extends Pane {
     try {
       const response = await fetch(runEndpoint, {
         method: "POST",
+        headers: nodeInfo
+          ? {
+              "Content-Type": "application/json",
+            }
+          : undefined,
+        body: nodeInfo
+          ? JSON.stringify({
+              nodeId: nodeInfo.id,
+              nodeType: nodeInfo.type,
+              nodeLabel: nodeInfo.label,
+              step: nodeInfo.step,
+              totalSteps: nodeInfo.total,
+            })
+          : undefined,
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+        console.error(
+          `[flow] Backend request failed with status ${response.status} for node ${nodeInfo?.label ?? "unknown"}`,
+        );
+        return false;
       }
 
       const data = (await response.json()) as { result?: string } | string;
       const resultMessage =
         typeof data === "string" ? data : (data.result ?? JSON.stringify(data));
 
-      console.log(`[flow] Backend response: ${resultMessage}`);
+      const nodeDescription = nodeInfo
+        ? `${nodeInfo.type} node "${nodeInfo.label}" (${nodeInfo.step}/${nodeInfo.total})`
+        : "workflow";
+
+      console.log(
+        `[flow] Backend response for ${nodeDescription}: ${resultMessage}`,
+      );
+      return true;
     } catch (error) {
       console.error(
         `[flow] Failed to reach backend (${runEndpoint}): ${String(error)}`,
       );
+      return false;
     }
   }
 
-  private runNodePlaceholder(
+  private async runNode(
     node: SelectableBoxRenderable,
     step: number,
     total: number,
-  ): void {
+  ): Promise<void> {
     const detail = this.canvas?.getNodeDetail(node);
     const nodeType = detail?.type ?? "Node";
     const nodeLabel = detail?.label ?? node.id;
     const originalColor = node.backgroundColor;
 
-    const startDelay = (step - 1) * 250;
+    this.canvas?.setNodeSpinnerState(node, "running");
 
-    setTimeout(() => {
-      this.canvas?.setNodeSpinnerState(node, "running");
+    node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
 
-      node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
-      setTimeout(() => {
-        node.backgroundColor = originalColor;
-        this.canvas?.setNodeSpinnerState(node, "success");
-      }, 900);
+    console.log(
+      `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
+    );
 
-      console.log(
-        `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
-      );
-    }, startDelay);
+    const success = await this.sendRunRequest({
+      id: node.id,
+      type: nodeType,
+      label: nodeLabel,
+      step,
+      total,
+    });
+
+    node.backgroundColor = originalColor;
+    this.canvas?.setNodeSpinnerState(node, success ? "success" : "error");
   }
 
   private createNodeFromSelection(value: string): void {
