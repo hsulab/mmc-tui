@@ -79,7 +79,7 @@ export class FlowCanvas {
     this.rect = rect;
     this.contentOrigin = { x: rect.left, y: rect.top + contentTop };
 
-    this.edgeLayer.top = contentTop;
+    this.edgeLayer.top = 0;
     this.edgeLayer.left = 0;
     this.edgeLayer.width = contentWidth;
     this.edgeLayer.height = contentHeight;

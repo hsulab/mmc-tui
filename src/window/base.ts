@@ -65,7 +65,6 @@ export class Pane extends Node {
 
     this.statusBar = new BoxRenderable(this.renderer, {
       id: `${this.id}-status-bar`,
-      position: "absolute",
       top: 0,
       left: 0,
       width: this.innerWidth,
