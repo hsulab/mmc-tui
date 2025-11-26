@@ -1,5 +1,7 @@
 import { CliRenderer, BoxRenderable } from "@opentui/core";
-import { Pane, type Rect } from "./base.ts";
+
+import type { Rect } from "../ui/geometry.ts";
+import { Pane } from "./base.ts";
 
 interface PaneRectInfo {
   pane: Pane;

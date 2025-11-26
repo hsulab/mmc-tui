@@ -1,6 +1,7 @@
 import { BoxRenderable, CliRenderer } from "@opentui/core";
 
-import { type Rect, type Direction, Node, Pane, Split } from "./base.ts";
+import type { Rect, Direction } from "../ui/geometry.ts";
+import { Node, Pane, Split } from "./base.ts";
 import { FlowPane } from "./flow.ts";
 import { ChartPane } from "./chart.ts";
 
