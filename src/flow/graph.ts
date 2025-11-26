@@ -1,10 +1,10 @@
 import {
   CliRenderer,
-  Renderable,
   RGBA,
+  Renderable,
   BoxRenderable,
-  createTimeline,
   OptimizedBuffer,
+  createTimeline,
   type BoxOptions,
   type MouseEvent,
 } from "@opentui/core";
@@ -69,56 +69,60 @@ export function DraggableBox(
     buffer: OptimizedBuffer,
     _deltaTime: number,
   ) {
+    /** Disable text temporarily
+     */
     const currentTime = Date.now();
-    if (scrollText && currentTime - scrollTimestamp > 2000) {
-      scrollText = "";
-    }
 
-    const baseCenterX = this.x + Math.floor(this.width / 2);
-    const baseCenterY = this.y + Math.floor(this.height / 2);
-
-    let textLines = 0;
-    if (isDragging) textLines++;
-    if (scrollText) textLines++;
-    if (gotText) textLines += 2;
-
-    let currentY =
-      textLines > 1 ? baseCenterY - Math.floor(textLines / 2) : baseCenterY;
-
-    if (isDragging) {
-      const centerX = baseCenterX - 2;
-      buffer.drawText("drag", centerX, currentY, RGBA.fromInts(64, 224, 208));
-      currentY++;
-    }
-
-    if (scrollText) {
-      const age = currentTime - scrollTimestamp;
-      const fadeRatio = Math.max(0, 1 - age / 2000);
-      const alpha = Math.round(255 * fadeRatio);
-
-      const centerX = baseCenterX - Math.floor(scrollText.length / 2);
-      buffer.drawText(
-        scrollText,
-        centerX,
-        currentY,
-        RGBA.fromInts(255, 255, 0, alpha),
-      );
-      currentY++;
-    }
-
-    if (gotText) {
-      const gotX = baseCenterX - 2;
-      const gotTextX = baseCenterX - Math.floor(gotText.length / 2);
-      buffer.drawText("got", gotX, currentY, RGBA.fromInts(255, 182, 193));
-      currentY++;
-      buffer.drawText(
-        gotText,
-        gotTextX,
-        currentY,
-        RGBA.fromInts(147, 226, 255),
-      );
-    }
+    // if (scrollText && currentTime - scrollTimestamp > 2000) {
+    //   scrollText = "";
+    // }
+    //
+    // const baseCenterX = this.x + Math.floor(this.width / 2);
+    // const baseCenterY = this.y + Math.floor(this.height / 2);
+    //
+    // let textLines = 0;
+    // if (isDragging) textLines++;
+    // if (scrollText) textLines++;
+    // if (gotText) textLines += 2;
+    //
+    // let currentY =
+    //   textLines > 1 ? baseCenterY - Math.floor(textLines / 2) : baseCenterY;
+    //
+    // if (isDragging) {
+    //   const centerX = baseCenterX - 2;
+    //   buffer.drawText("drag", centerX, currentY, RGBA.fromInts(64, 224, 208));
+    //   currentY++;
+    // }
+    //
+    // if (scrollText) {
+    //   const age = currentTime - scrollTimestamp;
+    //   const fadeRatio = Math.max(0, 1 - age / 2000);
+    //   const alpha = Math.round(255 * fadeRatio);
+    //
+    //   const centerX = baseCenterX - Math.floor(scrollText.length / 2);
+    //   buffer.drawText(
+    //     scrollText,
+    //     centerX,
+    //     currentY,
+    //     RGBA.fromInts(255, 255, 0, alpha),
+    //   );
+    //   currentY++;
+    // }
+    //
+    // if (gotText) {
+    //   const gotX = baseCenterX - 2;
+    //   const gotTextX = baseCenterX - Math.floor(gotText.length / 2);
+    //   buffer.drawText("got", gotX, currentY, RGBA.fromInts(255, 182, 193));
+    //   currentY++;
+    //   buffer.drawText(
+    //     gotText,
+    //     gotTextX,
+    //     currentY,
+    //     RGBA.fromInts(147, 226, 255),
+    //   );
+    // }
   };
+
   const applySelectionBorder = (target: BoxRenderable) => {
     target.borderColor = isSelected ? selectedBorderColor : originalBorderColor;
   };

@@ -40,10 +40,11 @@ export class EdgeFrameBuffer extends FrameBufferRenderable {
 
     for (const edge of this.edgesProvider()) {
       this.drawDottedLine(
-        Math.round(edge.from.x + edge.from.width / 2) - this.x,
-        Math.round(edge.from.y + edge.from.height / 2) - this.y,
-        Math.round(edge.to.x + edge.to.width / 2) - this.x,
-        Math.round(edge.to.y + edge.to.height / 2) - this.y,
+        // minus two for border
+        Math.round(edge.from.x + (edge.from.width - 2) / 2) - this.x,
+        Math.round(edge.from.y + (edge.from.height - 2) / 2) - this.y,
+        Math.round(edge.to.x + (edge.to.width - 2) / 2) - this.x,
+        Math.round(edge.to.y + (edge.to.height - 2) / 2) - this.y,
       );
     }
 
