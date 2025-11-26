@@ -16,6 +16,8 @@ import { LattePalette } from "../palette.ts";
 import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
 import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
 
+import { OverlaySelector } from "../ui/overlay.ts";
+
 import { getBackendUrl } from "../config.ts";
 
 export class FlowPane extends Pane {
@@ -56,9 +58,10 @@ export class FlowPane extends Pane {
   ];
 
   // Node selector
-  private selectorContainer: BoxRenderable | null = null;
-  private selector: SelectRenderable | null = null;
-  private nodeSelectorVisible: boolean = false;
+  // private selectorContainer: BoxRenderable | null = null;
+  // private selector: SelectRenderable | null = null;
+  // private nodeSelectorVisible: boolean = false;
+  private nodeSelector: OverlaySelector | null = null;
   private readonly nodeDefinitions: Record<
     string,
     {
@@ -110,7 +113,7 @@ export class FlowPane extends Pane {
 
     this.createEdgeLayer();
 
-    this.createSelector();
+    this.createNodeSelector();
 
     this.createRunButton();
 
@@ -135,6 +138,8 @@ export class FlowPane extends Pane {
 
     this.updateRunControlLayout();
 
+    this.nodeSelector?.updateBounds(this.rect);
+
     this.setupKeybinds(this.renderer);
   }
 
@@ -155,112 +160,139 @@ export class FlowPane extends Pane {
     this.box!.add(this.edgeLayer);
   }
 
-  private createSelector(): void {
-    if (this.selectorContainer) return;
+  private createNodeSelector(): void {
+    if (!this.box || this.nodeSelector) return;
 
-    const containerWidth = 36;
-    const containerHeight = this.nodeOptions.length * 2 + 2;
+    this.nodeSelector = new OverlaySelector(this.renderer, {
+      id: `${this.id}-node-selector`,
+      title: " Select Node Type ",
+      options: this.nodeOptions,
+      parent: this.box,
+      onSelect: (option: SelectOption) => {
+        this.createNodeFromSelection(option.value);
+        this.nodeSelector!.hide();
+        this.active = true; // Reactivate pane
+        this.draw(); // Redraw border
+      },
+    });
 
-    if (!this.selectorContainer) {
-      this.selectorContainer = new BoxRenderable(this.renderer, {
-        id: `${this.id}-node-selector-container`,
-        title: " Select Node Type ",
-        position: "absolute",
-        top: this.rect.top + (this.rect.height - containerHeight - 2) / 2,
-        left: this.rect.left + (this.rect.width - containerWidth - 2) / 2,
-        width: containerWidth,
-        height: containerHeight,
-        border: true,
-        borderStyle: "rounded",
-        borderColor: LattePalette.peach,
-        backgroundColor: LattePalette.surface0,
-        zIndex: 400,
-      });
-
-      this.selector = new SelectRenderable(this.renderer, {
-        id: `${this.id}-node-selector`,
-        top: 0,
-        left: 0,
-        width: containerWidth - 2,
-        height: containerHeight - 2,
-        zIndex: 401,
-        options: this.nodeOptions,
-        backgroundColor: LattePalette.surface0,
-        textColor: LattePalette.text,
-        focusedBackgroundColor: LattePalette.surface0,
-        focusedTextColor: LattePalette.text,
-        selectedBackgroundColor: LattePalette.peach,
-        selectedTextColor: LattePalette.text,
-        descriptionColor: LattePalette.subtext0,
-        selectedDescriptionColor: LattePalette.text,
-        showDescription: true,
-        showScrollIndicator: false,
-        wrapSelection: true,
-      });
-
-      this.selector.on(
-        SelectRenderableEvents.ITEM_SELECTED,
-        (_: number, option: SelectOption) => {
-          this.createNodeFromSelection(option.value);
-          this.hideNodeSelector();
-          this.active = true; // Reactivate pane
-          this.draw(); // Redraw border
-        },
-      );
-
-      this.selectorContainer.visible = false;
-      this.nodeSelectorVisible = false;
-      this.selector.blur();
-
-      this.selectorContainer.add(this.selector);
-      this.box!.add(this.selectorContainer);
-    }
+    this.nodeSelector.updateBounds(this.rect);
   }
 
   private showNodeSelector(): void {
-    if (!this.selectorContainer || !this.box) return;
-
-    const containerWidth = 36;
-    const selectHeight = this.nodeOptions.length * 2;
-    const containerHeight = Math.max(8, selectHeight + 2);
-
-    const innerLeft = this.rect.left + 1;
-    const innerTop = this.rect.top + 1 + this.statusBarHeight;
-    const innerWidth = Math.max(0, this.rect.width - 2);
-    const innerHeight = Math.max(
-      0,
-      this.rect.height - 2 - this.statusBarHeight,
-    );
-
-    const newWidth = Math.min(containerWidth, innerWidth);
-    const newHeight = Math.min(containerHeight, innerHeight);
-
-    this.selectorContainer.width = newWidth;
-    this.selectorContainer.height = newHeight;
-    this.selectorContainer.left =
-      innerLeft + Math.max(0, Math.floor((innerWidth - newWidth) / 2));
-    this.selectorContainer.top =
-      innerTop + Math.max(0, Math.floor((innerHeight - newHeight) / 2));
-
-    this.selector!.width = Math.max(0, this.selectorContainer.width - 2);
-    this.selector!.height = Math.max(0, this.selectorContainer.height - 2);
-
-    this.selectorContainer.visible = true;
-    this.selector!.visible = true;
-    this.selector!.focus();
-
-    this.nodeSelectorVisible = true;
+    this.nodeSelector?.show(this.rect);
   }
 
   private hideNodeSelector(): void {
-    if (!this.selectorContainer) return;
-
-    this.selector!.blur();
-    this.selector!.visible = false;
-    this.selectorContainer.visible = false;
-
-    this.nodeSelectorVisible = false;
+    this.nodeSelector?.hide();
   }
+
+  // private createSelector(): void {
+  //   if (this.selectorContainer) return;
+  //
+  //   const containerWidth = 36;
+  //   const containerHeight = this.nodeOptions.length * 2 + 2;
+  //
+  //   if (!this.selectorContainer) {
+  //     this.selectorContainer = new BoxRenderable(this.renderer, {
+  //       id: `${this.id}-node-selector-container`,
+  //       title: " Select Node Type ",
+  //       position: "absolute",
+  //       top: this.rect.top + (this.rect.height - containerHeight - 2) / 2,
+  //       left: this.rect.left + (this.rect.width - containerWidth - 2) / 2,
+  //       width: containerWidth,
+  //       height: containerHeight,
+  //       border: true,
+  //       borderStyle: "rounded",
+  //       borderColor: LattePalette.peach,
+  //       backgroundColor: LattePalette.surface0,
+  //       zIndex: 400,
+  //     });
+  //
+  //     this.selector = new SelectRenderable(this.renderer, {
+  //       id: `${this.id}-node-selector`,
+  //       top: 0,
+  //       left: 0,
+  //       width: containerWidth - 2,
+  //       height: containerHeight - 2,
+  //       zIndex: 401,
+  //       options: this.nodeOptions,
+  //       backgroundColor: LattePalette.surface0,
+  //       textColor: LattePalette.text,
+  //       focusedBackgroundColor: LattePalette.surface0,
+  //       focusedTextColor: LattePalette.text,
+  //       selectedBackgroundColor: LattePalette.peach,
+  //       selectedTextColor: LattePalette.text,
+  //       descriptionColor: LattePalette.subtext0,
+  //       selectedDescriptionColor: LattePalette.text,
+  //       showDescription: true,
+  //       showScrollIndicator: false,
+  //       wrapSelection: true,
+  //     });
+  //
+  //     this.selector.on(
+  //       SelectRenderableEvents.ITEM_SELECTED,
+  //       (_: number, option: SelectOption) => {
+  //         this.createNodeFromSelection(option.value);
+  //         this.hideNodeSelector();
+  //         this.active = true; // Reactivate pane
+  //         this.draw(); // Redraw border
+  //       },
+  //     );
+  //
+  //     this.selectorContainer.visible = false;
+  //     this.nodeSelectorVisible = false;
+  //     this.selector.blur();
+  //
+  //     this.selectorContainer.add(this.selector);
+  //     this.box!.add(this.selectorContainer);
+  //   }
+  // }
+
+  // private showNodeSelector(): void {
+  //   if (!this.selectorContainer || !this.box) return;
+  //
+  //   const containerWidth = 36;
+  //   const selectHeight = this.nodeOptions.length * 2;
+  //   const containerHeight = Math.max(8, selectHeight + 2);
+  //
+  //   const innerLeft = this.rect.left + 1;
+  //   const innerTop = this.rect.top + 1 + this.statusBarHeight;
+  //   const innerWidth = Math.max(0, this.rect.width - 2);
+  //   const innerHeight = Math.max(
+  //     0,
+  //     this.rect.height - 2 - this.statusBarHeight,
+  //   );
+  //
+  //   const newWidth = Math.min(containerWidth, innerWidth);
+  //   const newHeight = Math.min(containerHeight, innerHeight);
+  //
+  //   this.selectorContainer.width = newWidth;
+  //   this.selectorContainer.height = newHeight;
+  //   this.selectorContainer.left =
+  //     innerLeft + Math.max(0, Math.floor((innerWidth - newWidth) / 2));
+  //   this.selectorContainer.top =
+  //     innerTop + Math.max(0, Math.floor((innerHeight - newHeight) / 2));
+  //
+  //   this.selector!.width = Math.max(0, this.selectorContainer.width - 2);
+  //   this.selector!.height = Math.max(0, this.selectorContainer.height - 2);
+  //
+  //   this.selectorContainer.visible = true;
+  //   this.selector!.visible = true;
+  //   this.selector!.focus();
+  //
+  //   this.nodeSelectorVisible = true;
+  // }
+
+  // private hideNodeSelector(): void {
+  //   if (!this.selectorContainer) return;
+  //
+  //   this.selector!.blur();
+  //   this.selector!.visible = false;
+  //   this.selectorContainer.visible = false;
+  //
+  //   this.nodeSelectorVisible = false;
+  // }
 
   private createRunButton(): void {
     if (this.runButton || !this.statusBar) return;
@@ -649,9 +681,15 @@ export class FlowPane extends Pane {
 
     this.keybinds = (key: any) => {
       // If selector is visible, selector takes priority
-      if (this.nodeSelectorVisible) {
+      if (this.nodeSelector?.isVisible) {
         switch (key.name) {
           case "n":
+            this.hideNodeSelector();
+            this.active = true; // Reactivate pane
+            this.draw(); // Redraw border
+            console.log(`Node selector closed in FlowPane ${this.id}`);
+            return; // swallow
+          case "escape":
             this.hideNodeSelector();
             this.active = true; // Reactivate pane
             this.draw(); // Redraw border
@@ -688,13 +726,9 @@ export class FlowPane extends Pane {
       this.edgeLayer.destroy();
       this.edgeLayer = null;
     }
-    if (this.selector) {
-      this.selector.destroy();
-      this.selector = null;
-    }
-    if (this.selectorContainer) {
-      this.selectorContainer.destroy();
-      this.selectorContainer = null;
+    if (this.nodeSelector) {
+      this.nodeSelector.destroy();
+      this.nodeSelector = null;
     }
     if (this.nodes.length > 0) {
       this.nodes.forEach((box) => box.destroy());
