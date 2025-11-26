@@ -9,13 +9,15 @@ import {
   type SelectOption,
 } from "@opentui/core";
 
-import type { Rect } from "../ui/geometry.ts";
-import { Pane } from "./base.ts";
 import { LattePalette } from "../palette.ts";
+import type { Rect } from "../ui/geometry.ts";
+
+import { Pane } from "./base.ts";
+import { OverlaySelector } from "../ui/overlay.ts";
+
 import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
 import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
-
-import { OverlaySelector } from "../ui/overlay.ts";
+import { FlowNodeRegistry, type NodeSpec } from "../flow/registry.ts";
 
 import { getBackendUrl } from "../config.ts";
 
@@ -24,7 +26,7 @@ export class FlowPane extends Pane {
 
   private edgeLayer: EdgeFrameBuffer | null = null;
 
-  private nodes: SelectableBoxRenderable[] = [];
+  private nodes: SelectableBoxRenderable[] = []; // TODO: If we have some init nodes?
   private nodeDetails: Map<
     SelectableBoxRenderable,
     { type: string; label: string }
@@ -57,42 +59,8 @@ export class FlowPane extends Pane {
   ];
 
   // Node selector
-  // private selectorContainer: BoxRenderable | null = null;
-  // private selector: SelectRenderable | null = null;
-  // private nodeSelectorVisible: boolean = false;
   private nodeSelector: OverlaySelector | null = null;
-  private readonly nodeDefinitions: Record<
-    string,
-    {
-      description: string;
-      maxIn: number;
-      maxOut: number;
-      allowedOutgoing: string[];
-      allowedIncoming: string[];
-    }
-  > = {
-    Build: {
-      description: "  Build structures",
-      maxIn: 0,
-      maxOut: 1,
-      allowedOutgoing: ["Compute"],
-      allowedIncoming: [],
-    },
-    Compute: {
-      description: "  Run calculation/simulation)",
-      maxIn: 1,
-      maxOut: 1,
-      allowedOutgoing: ["Validate"],
-      allowedIncoming: ["Build"],
-    },
-    Validate: {
-      description: "  Analyze and verify data",
-      maxIn: 1,
-      maxOut: 0,
-      allowedOutgoing: [],
-      allowedIncoming: ["Compute"],
-    },
-  };
+  private readonly nodeDefinitions: Record<string, NodeSpec> = FlowNodeRegistry;
 
   private nodeOptions: SelectOption[] = Object.entries(
     this.nodeDefinitions,
@@ -119,8 +87,6 @@ export class FlowPane extends Pane {
     this.createRunSpinner();
 
     this.setStatusMessage("Ready");
-
-    this.nodes = []; // TODO: If we have some init nodes?
   }
 
   override get type(): string {
@@ -185,113 +151,6 @@ export class FlowPane extends Pane {
   private hideNodeSelector(): void {
     this.nodeSelector?.hide();
   }
-
-  // private createSelector(): void {
-  //   if (this.selectorContainer) return;
-  //
-  //   const containerWidth = 36;
-  //   const containerHeight = this.nodeOptions.length * 2 + 2;
-  //
-  //   if (!this.selectorContainer) {
-  //     this.selectorContainer = new BoxRenderable(this.renderer, {
-  //       id: `${this.id}-node-selector-container`,
-  //       title: " Select Node Type ",
-  //       position: "absolute",
-  //       top: this.rect.top + (this.rect.height - containerHeight - 2) / 2,
-  //       left: this.rect.left + (this.rect.width - containerWidth - 2) / 2,
-  //       width: containerWidth,
-  //       height: containerHeight,
-  //       border: true,
-  //       borderStyle: "rounded",
-  //       borderColor: LattePalette.peach,
-  //       backgroundColor: LattePalette.surface0,
-  //       zIndex: 400,
-  //     });
-  //
-  //     this.selector = new SelectRenderable(this.renderer, {
-  //       id: `${this.id}-node-selector`,
-  //       top: 0,
-  //       left: 0,
-  //       width: containerWidth - 2,
-  //       height: containerHeight - 2,
-  //       zIndex: 401,
-  //       options: this.nodeOptions,
-  //       backgroundColor: LattePalette.surface0,
-  //       textColor: LattePalette.text,
-  //       focusedBackgroundColor: LattePalette.surface0,
-  //       focusedTextColor: LattePalette.text,
-  //       selectedBackgroundColor: LattePalette.peach,
-  //       selectedTextColor: LattePalette.text,
-  //       descriptionColor: LattePalette.subtext0,
-  //       selectedDescriptionColor: LattePalette.text,
-  //       showDescription: true,
-  //       showScrollIndicator: false,
-  //       wrapSelection: true,
-  //     });
-  //
-  //     this.selector.on(
-  //       SelectRenderableEvents.ITEM_SELECTED,
-  //       (_: number, option: SelectOption) => {
-  //         this.createNodeFromSelection(option.value);
-  //         this.hideNodeSelector();
-  //         this.active = true; // Reactivate pane
-  //         this.draw(); // Redraw border
-  //       },
-  //     );
-  //
-  //     this.selectorContainer.visible = false;
-  //     this.nodeSelectorVisible = false;
-  //     this.selector.blur();
-  //
-  //     this.selectorContainer.add(this.selector);
-  //     this.box!.add(this.selectorContainer);
-  //   }
-  // }
-
-  // private showNodeSelector(): void {
-  //   if (!this.selectorContainer || !this.box) return;
-  //
-  //   const containerWidth = 36;
-  //   const selectHeight = this.nodeOptions.length * 2;
-  //   const containerHeight = Math.max(8, selectHeight + 2);
-  //
-  //   const innerLeft = this.rect.left + 1;
-  //   const innerTop = this.rect.top + 1 + this.statusBarHeight;
-  //   const innerWidth = Math.max(0, this.rect.width - 2);
-  //   const innerHeight = Math.max(
-  //     0,
-  //     this.rect.height - 2 - this.statusBarHeight,
-  //   );
-  //
-  //   const newWidth = Math.min(containerWidth, innerWidth);
-  //   const newHeight = Math.min(containerHeight, innerHeight);
-  //
-  //   this.selectorContainer.width = newWidth;
-  //   this.selectorContainer.height = newHeight;
-  //   this.selectorContainer.left =
-  //     innerLeft + Math.max(0, Math.floor((innerWidth - newWidth) / 2));
-  //   this.selectorContainer.top =
-  //     innerTop + Math.max(0, Math.floor((innerHeight - newHeight) / 2));
-  //
-  //   this.selector!.width = Math.max(0, this.selectorContainer.width - 2);
-  //   this.selector!.height = Math.max(0, this.selectorContainer.height - 2);
-  //
-  //   this.selectorContainer.visible = true;
-  //   this.selector!.visible = true;
-  //   this.selector!.focus();
-  //
-  //   this.nodeSelectorVisible = true;
-  // }
-
-  // private hideNodeSelector(): void {
-  //   if (!this.selectorContainer) return;
-  //
-  //   this.selector!.blur();
-  //   this.selector!.visible = false;
-  //   this.selectorContainer.visible = false;
-  //
-  //   this.nodeSelectorVisible = false;
-  // }
 
   private createRunButton(): void {
     if (this.runButton || !this.statusBar) return;
