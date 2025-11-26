@@ -15,6 +15,7 @@ import type { SelectableBoxRenderable } from "../flow/graph.ts";
 
 import { Pane } from "./base.ts";
 import { OverlaySelector } from "../ui/overlay.ts";
+import { Spinner } from "../ui/spinner.ts";
 
 import { FlowNodeRegistry, type NodeSpec } from "../flow/registry.ts";
 
@@ -30,22 +31,8 @@ export class FlowPane extends Pane {
   private isRunButtonPressed = false;
 
   // Spinner for workflow run
-  private runSpinner: BoxRenderable | null = null;
-  private runSpinnerFrame = 0;
-  private runSpinnerInterval: ReturnType<typeof setInterval> | null = null;
+  private runSpinner: Spinner | null = null;
   private isWorkflowRunning = false;
-  private readonly runSpinnerFrames = [
-    "⠋",
-    "⠙",
-    "⠹",
-    "⠸",
-    "⠼",
-    "⠴",
-    "⠦",
-    "⠧",
-    "⠇",
-    "⠏",
-  ];
 
   // Node selector
   private nodeSelector: OverlaySelector | null = null;
@@ -203,32 +190,17 @@ export class FlowPane extends Pane {
   private createRunSpinner(): void {
     if (this.runSpinner || !this.statusBar) return;
 
-    const baseColor = RGBA.fromInts(0, 0, 0, 0);
-
-    this.runSpinner = new BoxRenderable(this.renderer, {
+    this.runSpinner = new Spinner(this.renderer, {
       id: `${this.id}-run-spinner`,
-      position: "absolute",
-      top: 0,
+      parent: this.statusBar,
       left: 0,
+      top: 0,
       width: 2,
       height: this.statusBarHeight,
-      border: false,
-      backgroundColor: baseColor,
       zIndex: 301,
-      renderAfter: (buffer) => {
-        if (!this.isWorkflowRunning) return;
-
-        const frame = this.runSpinnerFrames[this.runSpinnerFrame];
-        const textX =
-          this.runSpinner!.x +
-          Math.max(0, Math.floor((this.runSpinner!.width - 1) / 2));
-        const textY = this.runSpinner!.y;
-        buffer.drawText(frame, textX, textY, RGBA.fromHex(LattePalette.green));
-      },
+      backgroundColor: RGBA.fromInts(0, 0, 0, 0),
+      runningColor: RGBA.fromHex(LattePalette.green),
     });
-
-    this.runSpinner.visible = false;
-    this.statusBar.add(this.runSpinner);
   }
 
   private updateRunControlLayout(): void {
@@ -242,7 +214,6 @@ export class FlowPane extends Pane {
     this.runButton.height = this.statusBarHeight;
 
     const spinnerWidth = this.runSpinner.width;
-    this.runSpinner.height = this.statusBarHeight;
 
     const buttonLeft = Math.max(0, barWidth - buttonWidth - padding);
     const spinnerLeft = Math.max(0, buttonLeft - spinnerWidth - padding);
@@ -250,8 +221,12 @@ export class FlowPane extends Pane {
     this.runButton.left = buttonLeft;
     this.runButton.top = 0;
 
-    this.runSpinner.left = spinnerLeft;
-    this.runSpinner.top = 0;
+    this.runSpinner.updateLayout(
+      spinnerLeft,
+      0,
+      spinnerWidth,
+      this.statusBarHeight,
+    );
   }
 
   private async runWorkflow(): Promise<void> {
@@ -270,6 +245,7 @@ export class FlowPane extends Pane {
 
     this.setStatusMessage("Running workflow...");
     this.startRunSpinner();
+    this.canvas?.setAllNodeSpinnerStates("queued");
 
     console.log(`Starting workflow run for FlowPane ${this.id}`);
 
@@ -326,38 +302,23 @@ export class FlowPane extends Pane {
 
       console.log(`Workflow run completed for FlowPane ${this.id}`);
     } finally {
+      this.canvas?.setAllNodeSpinnerStates("idle");
       this.stopRunSpinner();
       this.setStatusMessage("Ready");
     }
   }
 
   private startRunSpinner(): void {
-    if (!this.runSpinner || this.runSpinnerInterval) return;
+    if (!this.runSpinner || this.isWorkflowRunning) return;
 
     this.isWorkflowRunning = true;
-    this.runSpinner.visible = true;
-    this.runSpinnerFrame = 0;
-    this.runSpinner.requestRender();
-
-    this.runSpinnerInterval = setInterval(() => {
-      this.runSpinnerFrame =
-        (this.runSpinnerFrame + 1) % this.runSpinnerFrames.length;
-      this.runSpinner?.requestRender();
-    }, 120);
+    this.runSpinner.setState("running");
   }
 
   private stopRunSpinner(): void {
     this.isWorkflowRunning = false;
 
-    if (this.runSpinnerInterval) {
-      clearInterval(this.runSpinnerInterval);
-      this.runSpinnerInterval = null;
-    }
-
-    if (this.runSpinner) {
-      this.runSpinner.visible = false;
-      this.runSpinner.requestRender();
-    }
+    this.runSpinner?.setState("idle");
   }
 
   private async sendRunRequest(): Promise<void> {
@@ -397,14 +358,21 @@ export class FlowPane extends Pane {
     const nodeLabel = detail?.label ?? node.id;
     const originalColor = node.backgroundColor;
 
-    node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
-    setTimeout(() => {
-      node.backgroundColor = originalColor;
-    }, 1000);
+    const startDelay = (step - 1) * 250;
 
-    console.log(
-      `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
-    );
+    setTimeout(() => {
+      this.canvas?.setNodeSpinnerState(node, "running");
+
+      node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
+      setTimeout(() => {
+        node.backgroundColor = originalColor;
+        this.canvas?.setNodeSpinnerState(node, "success");
+      }, 900);
+
+      console.log(
+        `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
+      );
+    }, startDelay);
   }
 
   private createNodeFromSelection(value: string): void {
@@ -489,12 +457,7 @@ export class FlowPane extends Pane {
       this.runButton.destroy();
       this.runButton = null;
     }
-    if (this.runSpinnerInterval) {
-      clearInterval(this.runSpinnerInterval);
-      this.runSpinnerInterval = null;
-    }
     if (this.runSpinner) {
-      this.box?.remove(this.runSpinner.id);
       this.runSpinner.destroy();
       this.runSpinner = null;
     }

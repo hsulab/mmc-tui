@@ -5,6 +5,7 @@ import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
 import { type NodeSpec } from "../flow/registry.ts";
 import { LattePalette } from "../palette.ts";
 import type { Rect } from "../ui/geometry.ts";
+import { Spinner, type SpinnerState } from "../ui/spinner.ts";
 
 const NodeBoxWidth = 18;
 const NodeBoxHeight = 5;
@@ -18,6 +19,8 @@ export class FlowCanvas {
     { type: string; label: string }
   > = new Map();
   private edges: NodeEdge[] = [];
+
+  private nodeSpinners: Map<SelectableBoxRenderable, Spinner> = new Map();
 
   private pendingConnectionNode: SelectableBoxRenderable | null = null;
 
@@ -83,6 +86,8 @@ export class FlowCanvas {
     this.edges = [];
     this.nodeDetails.clear();
     this.nodePositions.clear();
+    this.nodeSpinners.forEach((spinner) => spinner.destroy());
+    this.nodeSpinners.clear();
   }
 
   public createNode(value: string): SelectableBoxRenderable {
@@ -109,6 +114,7 @@ export class FlowCanvas {
         this.handleNodeDeselection(box as SelectableBoxRenderable),
       onMove: (box) => {
         this.updateWorldPosition(box as SelectableBoxRenderable);
+        this.updateNodeSpinnerPosition(box as SelectableBoxRenderable);
         this.requestEdgeRender();
       },
       selectedBorderColor: RGBA.fromHex(LattePalette.red),
@@ -120,6 +126,7 @@ export class FlowCanvas {
       type: value,
       label: nodeLabel,
     });
+    this.createNodeSpinner(newBox as SelectableBoxRenderable);
     this.nodePositions.set(
       newBox as SelectableBoxRenderable,
       this.screenToWorld(newBox.x, newBox.y),
@@ -143,6 +150,17 @@ export class FlowCanvas {
     node: SelectableBoxRenderable,
   ): { type: string; label: string } | undefined {
     return this.nodeDetails.get(node);
+  }
+
+  public setNodeSpinnerState(
+    node: SelectableBoxRenderable,
+    state: SpinnerState,
+  ): void {
+    this.nodeSpinners.get(node)?.setState(state);
+  }
+
+  public setAllNodeSpinnerStates(state: SpinnerState): void {
+    this.nodeSpinners.forEach((spinner) => spinner.setState(state));
   }
 
   public setAllNodeColors(color: RGBA): void {
@@ -292,6 +310,35 @@ export class FlowCanvas {
     );
   }
 
+  private createNodeSpinner(node: SelectableBoxRenderable): void {
+    const spinner = new Spinner(this.renderer, {
+      id: `${node.id}-spinner`,
+      parent: this.parent,
+      left: node.left ?? node.x ?? 0,
+      top: node.top ?? node.y ?? 0,
+      width: 2,
+      height: 1,
+      zIndex: (node.zIndex ?? 0) + 1,
+      visible: false,
+    });
+
+    this.nodeSpinners.set(node, spinner);
+    this.updateNodeSpinnerPosition(node);
+  }
+
+  private updateNodeSpinnerPosition(node: SelectableBoxRenderable): void {
+    const spinner = this.nodeSpinners.get(node);
+    if (!spinner) return;
+
+    const left = (node.left ?? node.x ?? 0) + Math.max(1, node.width - 3);
+    const top = node.top ?? node.y ?? 0;
+    spinner.updateLayout(left, top);
+  }
+
+  private updateAllNodeSpinnerPositions(): void {
+    this.nodes.forEach((node) => this.updateNodeSpinnerPosition(node));
+  }
+
   private applyViewTransform(): void {
     this.nodes.forEach((node) => {
       const position = this.nodePositions.get(node);
@@ -302,6 +349,7 @@ export class FlowCanvas {
       node.top = y;
     });
 
+    this.updateAllNodeSpinnerPositions();
     this.requestEdgeRender();
   }
 }
