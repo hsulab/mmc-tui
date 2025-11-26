@@ -4,6 +4,7 @@ import type { Rect, Direction } from "../ui/geometry.ts";
 import { Node, Pane, Split } from "./base.ts";
 import { FlowPane } from "./flow.ts";
 import { ChartPane } from "./chart.ts";
+import { MaterialsPane } from "./materials.ts";
 
 import { StatusBar } from "../status.ts";
 
@@ -48,7 +49,7 @@ export class LayoutManager {
     });
     this.renderer.root.add(this.windowContainer);
 
-    this.root = new FlowPane(
+    const flowPane = new FlowPane(
       this.renderer,
       this.generateId(),
       true,
@@ -60,6 +61,22 @@ export class LayoutManager {
       },
       (chart) => this.showSimulationChart(chart),
     );
+
+    const materialsPane = new MaterialsPane(
+      this.renderer,
+      this.generateId(),
+      false,
+      {
+        top: 0,
+        left: this._width * 0.5,
+        width: this._width * 0.5,
+        height: this._height,
+      },
+    );
+    // this.root = materialsPane;
+
+    this.root = new Split("vertical", 0.5, flowPane, materialsPane);
+
     this.root.collectPanes().forEach((p) => this.windowContainer!.add(p.box));
     this.updateLayout();
   }
