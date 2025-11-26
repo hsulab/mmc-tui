@@ -35,6 +35,25 @@ export class FlowPane extends Pane {
   private runButton: BoxRenderable | null = null;
   private isRunButtonPressed = false;
 
+  // Spinner for workflow run
+  private runSpinner: BoxRenderable | null = null;
+  private runSpinnerFrame = 0;
+  private runSpinnerInterval: ReturnType<typeof setInterval> | null = null;
+  private isWorkflowRunning = false;
+  private readonly runSpinnerFrames = [
+    "⠋",
+    "⠙",
+    "⠹",
+    "⠸",
+    "⠼",
+    "⠴",
+    "⠦",
+    "⠧",
+    "⠇",
+    "⠏",
+  ];
+
+  // Node selector
   private selectorContainer: BoxRenderable | null = null;
   private selector: SelectRenderable | null = null;
   private nodeSelectorVisible: boolean = false;
@@ -69,6 +88,8 @@ export class FlowPane extends Pane {
     this.createSelector();
 
     this.createRunButton();
+
+    this.createRunSpinner();
 
     this.nodes = []; // TODO: If we have some init nodes?
   }
@@ -273,6 +294,38 @@ export class FlowPane extends Pane {
     this.box!.add(this.runButton);
   }
 
+  private createRunSpinner(): void {
+    if (this.runSpinner) return;
+
+    const baseColor = RGBA.fromInts(0, 0, 0, 0);
+
+    this.runSpinner = new BoxRenderable(this.renderer, {
+      id: `${this.id}-run-spinner`,
+      position: "absolute",
+      top: this.rect.top - 2,
+      left: this.rect.left + this.rect.width - 14,
+      width: 2,
+      height: 3,
+      border: false,
+      backgroundColor: baseColor,
+      zIndex: 301,
+      renderAfter: (buffer) => {
+        if (!this.isWorkflowRunning) return;
+
+        const frame = this.runSpinnerFrames[this.runSpinnerFrame];
+        const textX =
+          this.runSpinner!.x +
+          Math.max(0, Math.floor((this.runSpinner!.width - 1) / 2));
+        const textY =
+          this.runSpinner!.y + Math.floor(this.runSpinner!.height / 2);
+        buffer.drawText(frame, textX, textY, RGBA.fromHex(LattePalette.green));
+      },
+    });
+
+    this.runSpinner.visible = false;
+    this.box!.add(this.runSpinner);
+  }
+
   private updateRunButtonPosition(): void {
     if (!this.runButton) return;
 
@@ -290,6 +343,26 @@ export class FlowPane extends Pane {
     this.runButton.left =
       innerLeft + Math.max(0, innerWidth - this.runButton.width - padding);
     this.runButton.top = innerTop + Math.max(0, padding);
+
+    if (this.runSpinner) {
+      const spinnerPadding = 1;
+      const spinnerWidth = Math.max(1, Math.min(2, innerWidth));
+      const spinnerHeight = buttonHeight;
+
+      this.runSpinner.width = spinnerWidth;
+      this.runSpinner.height = spinnerHeight;
+      this.runSpinner.top = this.runButton.top;
+      this.runSpinner.left =
+        innerLeft +
+        Math.max(
+          0,
+          innerWidth -
+            this.runButton.width -
+            spinnerWidth -
+            padding -
+            spinnerPadding,
+        );
+    }
   }
 
   private async runWorkflow(): Promise<void> {
@@ -297,6 +370,13 @@ export class FlowPane extends Pane {
       console.log(`No nodes to run in FlowPane ${this.id}`);
       return;
     }
+
+    if (this.isWorkflowRunning) {
+      console.log(`Workflow already running in FlowPane ${this.id}`);
+      return;
+    }
+
+    this.startRunSpinner();
 
     console.log(`Starting workflow run for FlowPane ${this.id}`);
 
@@ -348,9 +428,42 @@ export class FlowPane extends Pane {
       this.runNodePlaceholder(node, index + 1, executionOrder.length),
     );
 
-    await this.sendRunRequest();
+    try {
+      await this.sendRunRequest();
 
-    console.log(`Workflow run completed for FlowPane ${this.id}`);
+      console.log(`Workflow run completed for FlowPane ${this.id}`);
+    } finally {
+      this.stopRunSpinner();
+    }
+  }
+
+  private startRunSpinner(): void {
+    if (!this.runSpinner || this.runSpinnerInterval) return;
+
+    this.isWorkflowRunning = true;
+    this.runSpinner.visible = true;
+    this.runSpinnerFrame = 0;
+    this.runSpinner.requestRender();
+
+    this.runSpinnerInterval = setInterval(() => {
+      this.runSpinnerFrame =
+        (this.runSpinnerFrame + 1) % this.runSpinnerFrames.length;
+      this.runSpinner?.requestRender();
+    }, 120);
+  }
+
+  private stopRunSpinner(): void {
+    this.isWorkflowRunning = false;
+
+    if (this.runSpinnerInterval) {
+      clearInterval(this.runSpinnerInterval);
+      this.runSpinnerInterval = null;
+    }
+
+    if (this.runSpinner) {
+      this.runSpinner.visible = false;
+      this.runSpinner.requestRender();
+    }
   }
 
   private async sendRunRequest(): Promise<void> {
@@ -530,6 +643,15 @@ export class FlowPane extends Pane {
       this.box?.remove(this.runButton.id);
       this.runButton.destroy();
       this.runButton = null;
+    }
+    if (this.runSpinnerInterval) {
+      clearInterval(this.runSpinnerInterval);
+      this.runSpinnerInterval = null;
+    }
+    if (this.runSpinner) {
+      this.box?.remove(this.runSpinner.id);
+      this.runSpinner.destroy();
+      this.runSpinner = null;
     }
     this.nodeDetails.clear();
     if (this.keybinds) {
