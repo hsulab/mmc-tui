@@ -11,42 +11,20 @@ import {
 
 import { LattePalette } from "../palette.ts";
 import type { Rect } from "../ui/geometry.ts";
+import type { SelectableBoxRenderable } from "../flow/graph.ts";
 
 import { Pane } from "./base.ts";
 import { OverlaySelector } from "../ui/overlay.ts";
 
-import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
-import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
 import { FlowNodeRegistry, type NodeSpec } from "../flow/registry.ts";
 
 import { getBackendUrl } from "../config.ts";
+import { FlowCanvas } from "../flow/canvas.ts";
 
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
-  private edgeLayer: EdgeFrameBuffer | null = null;
-
-  private nodes: SelectableBoxRenderable[] = []; // TODO: If we have some init nodes?
-  private nodeDetails: Map<
-    SelectableBoxRenderable,
-    { type: string; label: string }
-  > = new Map();
-  private edges: NodeEdge[] = [];
-
-  private pendingConnectionNode: SelectableBoxRenderable | null = null;
-
-  private nodeIndex: number = 0;
-
-  private panOffset = { x: 0, y: 0 };
-  private zoomLevel = 1;
-  private readonly zoomStep = 0.1;
-  private readonly minZoom = 0.5;
-  private readonly maxZoom = 2;
-
-  private nodePositions: Map<
-    SelectableBoxRenderable,
-    { x: number; y: number }
-  > = new Map();
+  private canvas: FlowCanvas | null = null;
 
   private runButton: BoxRenderable | null = null;
   private isRunButtonPressed = false;
@@ -89,13 +67,13 @@ export class FlowPane extends Pane {
   ) {
     super(renderer, id, active, rect);
 
-    this.createEdgeLayer();
-
     this.createNodeSelector();
 
     this.createRunButton();
 
     this.createRunSpinner();
+
+    this.createCanvas();
 
     this.setStatusMessage("Ready");
   }
@@ -107,39 +85,33 @@ export class FlowPane extends Pane {
   override draw(): void {
     super.draw();
 
-    this.edgeLayer!.top = this.contentTop;
-    this.edgeLayer!.left = 0;
-    this.edgeLayer!.width = this.contentWidth;
-    this.edgeLayer!.height = this.contentHeight;
+    this.canvas?.updateLayout(
+      this.rect,
+      this.contentTop,
+      this.contentWidth,
+      this.contentHeight,
+    );
 
     this.updateRunControlLayout();
 
     this.nodeSelector?.updateBounds(this.rect);
 
-    this.applyViewTransform();
-
     this.setupKeybinds(this.renderer);
   }
 
-  private get contentOrigin(): { x: number; y: number } {
-    return { x: this.rect.left, y: this.rect.top + this.contentTop };
-  }
+  private createCanvas(): void {
+    if (this.canvas || !this.box) return;
 
-  private createEdgeLayer(): void {
-    if (this.edgeLayer) return;
-
-    this.edgeLayer = new EdgeFrameBuffer(
+    this.canvas = new FlowCanvas(
       this.renderer,
-      `${this.id}-edges`,
-      () => this.edges,
-      RGBA.fromHex(LattePalette.surface0),
+      this.id,
+      this.rect,
+      this.contentTop,
+      this.contentWidth,
+      this.contentHeight,
+      this.box,
+      this.nodeDefinitions,
     );
-    this.edgeLayer.top = this.contentTop;
-    this.edgeLayer.left = 0;
-    this.edgeLayer.width = this.contentWidth;
-    this.edgeLayer.height = this.contentHeight;
-
-    this.box!.add(this.edgeLayer);
   }
 
   private createNodeSelector(): void {
@@ -283,7 +255,10 @@ export class FlowPane extends Pane {
   }
 
   private async runWorkflow(): Promise<void> {
-    if (this.nodes.length === 0) {
+    const nodes = this.canvas?.getNodes() ?? [];
+    const edges = this.canvas?.getEdges() ?? [];
+
+    if (nodes.length === 0) {
       console.log(`No nodes to run in FlowPane ${this.id}`);
       return;
     }
@@ -304,9 +279,9 @@ export class FlowPane extends Pane {
       SelectableBoxRenderable[]
     >();
 
-    this.nodes.forEach((node) => inDegree.set(node, 0));
+    nodes.forEach((node) => inDegree.set(node, 0));
 
-    this.edges.forEach((edge) => {
+    edges.forEach((edge) => {
       const target = edge.to as SelectableBoxRenderable;
       const source = edge.from as SelectableBoxRenderable;
 
@@ -335,11 +310,11 @@ export class FlowPane extends Pane {
       });
     }
 
-    if (executionOrder.length !== this.nodes.length) {
+    if (executionOrder.length !== nodes.length) {
       console.log(
         `Workflow contains cycles or disconnected edges; running in insertion order for FlowPane ${this.id}`,
       );
-      executionOrder.splice(0, executionOrder.length, ...this.nodes);
+      executionOrder.splice(0, executionOrder.length, ...nodes);
     }
 
     executionOrder.forEach((node, index) =>
@@ -417,7 +392,7 @@ export class FlowPane extends Pane {
     step: number,
     total: number,
   ): void {
-    const detail = this.nodeDetails.get(node);
+    const detail = this.canvas?.getNodeDetail(node);
     const nodeType = detail?.type ?? "Node";
     const nodeLabel = detail?.label ?? node.id;
     const originalColor = node.backgroundColor;
@@ -432,198 +407,8 @@ export class FlowPane extends Pane {
     );
   }
 
-  private requestEdgeRender(): void {
-    this.edgeLayer?.requestRender();
-  }
-
-  private handleNodeSelection(node: SelectableBoxRenderable): void {
-    if (this.pendingConnectionNode && this.pendingConnectionNode !== node) {
-      this.connectNodes(this.pendingConnectionNode, node);
-      this.pendingConnectionNode = null;
-    } else {
-      this.pendingConnectionNode = node;
-    }
-
-    this.requestEdgeRender();
-  }
-
-  private handleNodeDeselection(node: SelectableBoxRenderable): void {
-    if (this.pendingConnectionNode === node) {
-      this.pendingConnectionNode = null;
-    }
-
-    this.requestEdgeRender();
-  }
-
-  private connectNodes(
-    from: SelectableBoxRenderable,
-    to: SelectableBoxRenderable,
-  ): void {
-    // Check connection rules
-    const fromDetail = this.nodeDetails.get(from);
-    const toDetail = this.nodeDetails.get(to);
-
-    if (!fromDetail || !toDetail) return;
-
-    const fromDefinition = this.nodeDefinitions[fromDetail.type];
-    const toDefinition = this.nodeDefinitions[toDetail.type];
-
-    if (!fromDefinition || !toDefinition) return;
-
-    if (!fromDefinition.allowedOutgoing.includes(toDetail.type)) {
-      console.log(
-        `Cannot connect ${fromDetail.type} to ${toDetail.type}: outgoing rules do not allow this link`,
-      );
-      return;
-    }
-
-    if (!toDefinition.allowedIncoming.includes(fromDetail.type)) {
-      console.log(
-        `Cannot connect ${fromDetail.type} to ${toDetail.type}: incoming rules for target disallow this link`,
-      );
-      return;
-    }
-
-    const outgoingCount = this.edges.filter(
-      (edge) => edge.from === from,
-    ).length;
-    if (outgoingCount >= fromDefinition.maxOut) {
-      console.log(
-        `${fromDetail.label} cannot have more than ${fromDefinition.maxOut} outgoing connection(s)`,
-      );
-      return;
-    }
-
-    const incomingCount = this.edges.filter((edge) => edge.to === to).length;
-    if (incomingCount >= toDefinition.maxIn) {
-      console.log(
-        `${toDetail.label} cannot accept more than ${toDefinition.maxIn} incoming connection(s)`,
-      );
-      return;
-    }
-
-    // Check for existing connection
-    const key = this.edgeKey(from, to);
-    const alreadyConnected = this.edges.some(
-      (edge) => this.edgeKey(edge.from, edge.to) === key,
-    );
-
-    if (alreadyConnected) return;
-
-    this.edges.push({ from, to });
-    from.setSelected(false);
-    to.setSelected(false);
-    console.log(`Linked ${from.id} -> ${to.id} in FlowPane ${this.id}`);
-  }
-
-  private edgeKey(a: BoxRenderable, b: BoxRenderable): string {
-    return `${a.id}->${b.id}`;
-  }
-
   private createNodeFromSelection(value: string): void {
-    this.nodeIndex++;
-    const nodeId = `${this.id}-${value.toLowerCase()}-${this.nodeIndex}`;
-    const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
-    const newBox = DraggableBox(this.renderer, {
-      id: nodeId,
-      x:
-        this.rect.left +
-        Math.max(0, Math.floor(((this.rect.width - 18) / 2) * Math.random())),
-      y: this.rect.top + 2,
-      width: 18,
-      height: 5,
-      label: nodeLabel,
-      color: RGBA.fromHex(LattePalette.teal),
-      onSelect: (box) =>
-        this.handleNodeSelection(box as SelectableBoxRenderable),
-      onDeselect: (box) =>
-        this.handleNodeDeselection(box as SelectableBoxRenderable),
-      onMove: (box) => {
-        this.updateWorldPosition(box as SelectableBoxRenderable);
-        this.requestEdgeRender();
-      },
-      selectedBorderColor: RGBA.fromHex(LattePalette.red),
-    });
-    this.box!.add(newBox);
-    this.nodes.push(newBox as SelectableBoxRenderable);
-    this.nodeDetails.set(newBox as SelectableBoxRenderable, {
-      type: value,
-      label: nodeLabel,
-    });
-    this.nodePositions.set(
-      newBox as SelectableBoxRenderable,
-      this.screenToWorld(newBox.x, newBox.y),
-    );
-    this.applyViewTransform();
-    this.requestEdgeRender();
-    console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
-  }
-
-  private screenToWorld(x: number, y: number): { x: number; y: number } {
-    const origin = this.contentOrigin;
-    return {
-      x: (x - origin.x) / this.zoomLevel - this.panOffset.x,
-      y: (y - origin.y) / this.zoomLevel - this.panOffset.y,
-    };
-  }
-
-  private worldToScreen(x: number, y: number): { x: number; y: number } {
-    const origin = this.contentOrigin;
-    return {
-      x: Math.round(origin.x + (x + this.panOffset.x) * this.zoomLevel),
-      y: Math.round(origin.y + (y + this.panOffset.y) * this.zoomLevel),
-    };
-  }
-
-  private updateWorldPosition(node: SelectableBoxRenderable): void {
-    this.nodePositions.set(
-      node,
-      this.screenToWorld(node.x ?? node.left ?? 0, node.y ?? node.top ?? 0),
-    );
-  }
-
-  private applyViewTransform(): void {
-    this.nodes.forEach((node) => {
-      const position = this.nodePositions.get(node);
-      if (!position) return;
-
-      const { x, y } = this.worldToScreen(position.x, position.y);
-      node.left = x;
-      node.top = y;
-    });
-
-    this.requestEdgeRender();
-  }
-
-  private adjustZoom(delta: number): void {
-    const nextZoom = Math.min(
-      this.maxZoom,
-      Math.max(this.minZoom, this.zoomLevel + delta),
-    );
-
-    if (nextZoom === this.zoomLevel) return;
-
-    this.zoomLevel = nextZoom;
-    console.log(
-      `FlowPane ${this.id} zoom set to ${Math.round(nextZoom * 100)}%`,
-    );
-    this.applyViewTransform();
-  }
-
-  private panCanvas(dx: number, dy: number): void {
-    this.panOffset.x += dx;
-    this.panOffset.y += dy;
-    console.log(
-      `FlowPane ${this.id} panned to (${this.panOffset.x}, ${this.panOffset.y})`,
-    );
-    this.applyViewTransform();
-  }
-
-  private resetViewTransform(): void {
-    this.zoomLevel = 1;
-    this.panOffset = { x: 0, y: 0 };
-    console.log(`FlowPane ${this.id} view reset`);
-    this.applyViewTransform();
+    this.canvas?.createNode(value);
   }
 
   public setupKeybinds(renderer: CliRenderer): void {
@@ -659,33 +444,31 @@ export class FlowPane extends Pane {
             console.log(`Node selector opened in FlowPane ${this.id}`);
             return;
           case "t":
-            this.nodes.forEach((box) => {
-              box.backgroundColor = RGBA.fromHex(LattePalette.peach);
-            });
+            this.canvas?.setAllNodeColors(RGBA.fromHex(LattePalette.peach));
             console.log(`All node colors updated in FlowPane ${this.id}`);
             return;
           case "+":
           case "=":
-            this.adjustZoom(this.zoomStep);
+            this.canvas?.adjustZoom(0.1);
             return;
           case "-":
           case "_":
-            this.adjustZoom(-this.zoomStep);
+            this.canvas?.adjustZoom(-0.1);
             return;
           case "0":
-            this.resetViewTransform();
+            this.canvas?.resetViewTransform();
             return;
           case "left":
-            this.panCanvas(-2, 0);
+            this.canvas?.panCanvas(-2, 0);
             return;
           case "right":
-            this.panCanvas(2, 0);
+            this.canvas?.panCanvas(2, 0);
             return;
           case "up":
-            this.panCanvas(0, -1);
+            this.canvas?.panCanvas(0, -1);
             return;
           case "down":
-            this.panCanvas(0, 1);
+            this.canvas?.panCanvas(0, 1);
             return;
         }
       }
@@ -695,20 +478,12 @@ export class FlowPane extends Pane {
   }
 
   override destroy(): void {
-    if (this.edgeLayer) {
-      this.edgeLayer.destroy();
-      this.edgeLayer = null;
-    }
+    this.canvas?.destroy();
+    this.canvas = null;
     if (this.nodeSelector) {
       this.nodeSelector.destroy();
       this.nodeSelector = null;
     }
-    if (this.nodes.length > 0) {
-      this.nodes.forEach((box) => box.destroy());
-      this.nodes = [];
-    }
-    this.edges = [];
-    this.pendingConnectionNode = null;
     if (this.runButton) {
       this.box?.remove(this.runButton.id);
       this.runButton.destroy();
@@ -723,8 +498,6 @@ export class FlowPane extends Pane {
       this.runSpinner.destroy();
       this.runSpinner = null;
     }
-    this.nodeDetails.clear();
-    this.nodePositions.clear();
     if (this.keybinds) {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
