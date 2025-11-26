@@ -54,8 +54,10 @@ export class FlowPane extends Pane {
     yValues: number[];
   }) => void;
 
-  private nodeSimulationResults: Map<string, { time: number[]; temperature: number[] }> =
-    new Map();
+  private nodeSimulationResults: Map<
+    string,
+    { time: number[]; temperature: number[] }
+  > = new Map();
 
   constructor(
     renderer: CliRenderer,
@@ -230,23 +232,30 @@ export class FlowPane extends Pane {
     const padding = 1;
     const barWidth = this.statusBar.width;
 
+    // Adjust run button position
     const buttonWidth = Math.max(6, Math.min(10, barWidth));
     this.runButton.width = buttonWidth;
     this.runButton.height = this.statusBarHeight;
 
+    const buttonLeft = Math.max(0, barWidth - buttonWidth - padding);
+    this.runButton.top = this.rect.top;
+    this.runButton.left = this.rect.left + buttonLeft;
+
+    // Adjust spinner position
     const spinnerWidth = this.runSpinner.width;
     const spinnerHeight = Math.max(
       this.runSpinner.height,
       this.statusBarHeight,
     );
 
-    const buttonLeft = Math.max(0, barWidth - buttonWidth - padding);
     const spinnerLeft = Math.max(0, buttonLeft - spinnerWidth - padding);
 
-    this.runButton.left = buttonLeft;
-    this.runButton.top = 0;
-
-    this.runSpinner.updateLayout(spinnerLeft, 0, spinnerWidth, spinnerHeight);
+    this.runSpinner.updateLayout(
+      this.rect.left + spinnerLeft,
+      this.rect.top,
+      spinnerWidth,
+      spinnerHeight,
+    );
   }
 
   private async runWorkflow(): Promise<void> {
@@ -444,9 +453,9 @@ export class FlowPane extends Pane {
     this.canvas?.createNode(value);
   }
 
-  private async fetchSimulationData(nodeId: string): Promise<
-    { time: number[]; temperature: number[] } | null
-  > {
+  private async fetchSimulationData(
+    nodeId: string,
+  ): Promise<{ time: number[]; temperature: number[] } | null> {
     const backendUrl = getBackendUrl();
     const simulationEndpoint = `${backendUrl}/simulation/${encodeURIComponent(nodeId)}`;
 
@@ -459,7 +468,9 @@ export class FlowPane extends Pane {
         return null;
       }
 
-      const payload = (await response.json()) as { data?: number[][] } | number[][];
+      const payload = (await response.json()) as
+        | { data?: number[][] }
+        | number[][];
       const series = Array.isArray(payload) ? payload : payload.data;
 
       if (!Array.isArray(series) || series.length < 2) {
@@ -469,7 +480,9 @@ export class FlowPane extends Pane {
 
       const [time, temperature] = series;
       if (!Array.isArray(time) || !Array.isArray(temperature)) {
-        console.warn(`[flow] Simulation payload missing arrays for node ${nodeId}`);
+        console.warn(
+          `[flow] Simulation payload missing arrays for node ${nodeId}`,
+        );
         return null;
       }
 
