@@ -224,7 +224,7 @@ export class FlowPane extends Pane {
     this.runButton = new BoxRenderable(this.renderer, {
       id: `${this.id}-run-button`,
       position: "absolute",
-      top: this.rect.top + this.rect.height - 4,
+      top: this.rect.top - 2,
       left: this.rect.left + this.rect.width - 12,
       width: 10,
       height: 3,
@@ -289,8 +289,7 @@ export class FlowPane extends Pane {
     this.runButton.height = buttonHeight;
     this.runButton.left =
       innerLeft + Math.max(0, innerWidth - this.runButton.width - padding);
-    this.runButton.top =
-      innerTop + Math.max(0, innerHeight - this.runButton.height - padding);
+    this.runButton.top = innerTop + Math.max(0, padding);
   }
 
   private async runWorkflow(): Promise<void> {
