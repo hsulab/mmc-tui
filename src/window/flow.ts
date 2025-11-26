@@ -218,6 +218,10 @@ export class FlowPane extends Pane {
     this.runButton.height = this.statusBarHeight;
 
     const spinnerWidth = this.runSpinner.width;
+    const spinnerHeight = Math.max(
+      this.runSpinner.height,
+      this.statusBarHeight,
+    );
 
     const buttonLeft = Math.max(0, barWidth - buttonWidth - padding);
     const spinnerLeft = Math.max(0, buttonLeft - spinnerWidth - padding);
@@ -225,12 +229,7 @@ export class FlowPane extends Pane {
     this.runButton.left = buttonLeft;
     this.runButton.top = 0;
 
-    this.runSpinner.updateLayout(
-      spinnerLeft,
-      0,
-      spinnerWidth,
-      this.statusBarHeight,
-    );
+    this.runSpinner.updateLayout(spinnerLeft, 0, spinnerWidth, spinnerHeight);
   }
 
   private async runWorkflow(): Promise<void> {

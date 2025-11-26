@@ -20,23 +20,28 @@ const BRAILLE_FRAMES: SpinnerFrame[] = [
   ["⠏"],
 ];
 
-function createLineFrames(width: number, glyph = "●"): SpinnerFrame[] {
-  if (width <= 1) {
+function createRingFrames(dimension: number, glyph = "●"): SpinnerFrame[] {
+  if (dimension <= 1) {
     return [[glyph]];
   }
 
-  const forward = Array.from({ length: width }, (_, index) => index);
-  const backward = Array.from(
-    { length: Math.max(0, width - 2) },
-    (_, index) => width - 2 - index,
-  );
+  const maxIndex = Math.max(1, dimension - 1);
 
-  const positions = [...forward, ...backward];
+  const positions: Array<{ x: number; y: number }> = [];
 
-  return positions.map((position) => {
-    const leftPadding = " ".repeat(position);
-    const rightPadding = " ".repeat(Math.max(0, width - position - 1));
-    return [`${leftPadding}${glyph}${rightPadding}`];
+  for (let x = 0; x <= maxIndex; x += 1) positions.push({ x, y: 0 });
+  for (let y = 1; y < maxIndex; y += 1) positions.push({ x: maxIndex, y });
+  for (let x = maxIndex; x >= 0; x -= 1) positions.push({ x, y: maxIndex });
+  for (let y = maxIndex - 1; y >= 1; y -= 1) positions.push({ x: 0, y });
+
+  return positions.map(({ x: posX, y: posY }) => {
+    const rows = Array.from({ length: dimension }, () =>
+      Array.from({ length: dimension }, () => " "),
+    );
+
+    rows[posY]![posX] = glyph;
+
+    return rows.map((row) => row.join(""));
   });
 }
 
@@ -45,8 +50,8 @@ const SPINNER_CONFIGS: Record<
   { frames: SpinnerFrame[]; defaultWidth: number; defaultHeight: number }
 > = {
   tiny: { frames: BRAILLE_FRAMES, defaultWidth: 2, defaultHeight: 1 },
-  medium: { frames: createLineFrames(3), defaultWidth: 3, defaultHeight: 1 },
-  large: { frames: createLineFrames(5), defaultWidth: 5, defaultHeight: 1 },
+  medium: { frames: createRingFrames(3), defaultWidth: 3, defaultHeight: 3 },
+  large: { frames: createRingFrames(5), defaultWidth: 5, defaultHeight: 5 },
 };
 
 export interface SpinnerOptions {
