@@ -1,3 +1,5 @@
+import time
+
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -11,5 +13,8 @@ async def run_workflow():
     returns a static string so the frontend can confirm the wiring between
     the TUI and FastAPI backend.
     """
+
+    # Sleep for a bit to simulate work being done
+    time.sleep(10)
 
     return {"result": "Workflow executed successfully from FastAPI"}
