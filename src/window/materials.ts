@@ -183,7 +183,7 @@ export class MaterialsPane extends Pane {
 
     const atomGeometry = new SphereGeometry(0.08 * latticeConstant, 32, 32);
     const atomMaterial = new MeshToonMaterial({
-      color: new Color("#b87333"),
+      color: new Color("#df8e1d"),
     });
 
     positions.forEach((position) => {
