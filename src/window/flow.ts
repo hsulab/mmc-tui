@@ -230,7 +230,8 @@ export class FlowPane extends Pane {
     if (!this.statusBar || !this.runButton || !this.runSpinner) return;
 
     const padding = 1;
-    const barWidth = this.statusBar.width;
+    // const barWidth = this.statusBar.width;
+    const barWidth = this.rect.width - 2; // There is defer in status bar width?
 
     // Adjust run button position
     const buttonWidth = Math.max(6, Math.min(10, barWidth));
