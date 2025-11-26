@@ -75,7 +75,8 @@ export class LayoutManager {
     );
     // this.root = materialsPane;
 
-    this.root = new Split("vertical", 0.5, flowPane, materialsPane);
+    // this.root = new Split("vertical", 0.5, flowPane, materialsPane);
+    this.root = new Split("horizontal", 0.5, materialsPane, flowPane);
 
     this.root.collectPanes().forEach((p) => this.windowContainer!.add(p.box));
     this.updateLayout();
