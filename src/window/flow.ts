@@ -16,6 +16,8 @@ import { LattePalette } from "../palette.ts";
 import { DraggableBox, type SelectableBoxRenderable } from "../flow/graph.ts";
 import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
 
+import { getBackendUrl } from "../config.ts";
+
 export class FlowPane extends Pane {
   private keybinds: ((key: any) => void) | null = null;
 
@@ -490,8 +492,13 @@ export class FlowPane extends Pane {
   }
 
   private async sendRunRequest(): Promise<void> {
+    // Fetch backend URL from config
+    const backendUrl = getBackendUrl();
+    const runEndpoint = `${backendUrl}/run`;
+
+    // Send POST request to backend
     try {
-      const response = await fetch("http://127.0.0.1:8000/run", {
+      const response = await fetch(runEndpoint, {
         method: "POST",
       });
 
@@ -505,7 +512,9 @@ export class FlowPane extends Pane {
 
       console.log(`[flow] Backend response: ${resultMessage}`);
     } catch (error) {
-      console.error(`[flow] Failed to reach backend: ${String(error)}`);
+      console.error(
+        `[flow] Failed to reach backend (${runEndpoint}): ${String(error)}`,
+      );
     }
   }
 
