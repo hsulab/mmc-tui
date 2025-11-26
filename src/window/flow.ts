@@ -15,11 +15,11 @@ import type { SelectableBoxRenderable } from "../flow/graph.ts";
 
 import { Pane } from "./base.ts";
 import { OverlaySelector } from "../ui/overlay.ts";
-import { Spinner } from "../ui/spinner.ts";
+import { Spinner, type SpinnerSize } from "../ui/spinner.ts";
 
 import { FlowNodeRegistry, type NodeSpec } from "../flow/registry.ts";
 
-import { getBackendUrl } from "../config.ts";
+import { getBackendUrl, getConfig } from "../config.ts";
 import { FlowCanvas } from "../flow/canvas.ts";
 
 export class FlowPane extends Pane {
@@ -46,6 +46,8 @@ export class FlowPane extends Pane {
     description: definition.description,
   }));
 
+  private readonly spinnerSize: SpinnerSize;
+
   constructor(
     renderer: CliRenderer,
     id: string,
@@ -53,6 +55,8 @@ export class FlowPane extends Pane {
     rect: Rect,
   ) {
     super(renderer, id, active, rect);
+
+    this.spinnerSize = getConfig().spinnerSize;
 
     this.createNodeSelector();
 
@@ -98,6 +102,7 @@ export class FlowPane extends Pane {
       this.contentHeight,
       this.box,
       this.nodeDefinitions,
+      this.spinnerSize,
     );
   }
 
@@ -195,8 +200,7 @@ export class FlowPane extends Pane {
       parent: this.statusBar,
       left: 0,
       top: 0,
-      width: 2,
-      height: this.statusBarHeight,
+      size: this.spinnerSize,
       zIndex: 301,
       backgroundColor: RGBA.fromInts(0, 0, 0, 0),
       runningColor: RGBA.fromHex(LattePalette.green),

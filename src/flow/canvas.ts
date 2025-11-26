@@ -5,7 +5,7 @@ import { EdgeFrameBuffer, type NodeEdge } from "../flow/edge.ts";
 import { type NodeSpec } from "../flow/registry.ts";
 import { LattePalette } from "../palette.ts";
 import type { Rect } from "../ui/geometry.ts";
-import { Spinner, type SpinnerState } from "../ui/spinner.ts";
+import { Spinner, type SpinnerSize, type SpinnerState } from "../ui/spinner.ts";
 
 const NodeBoxWidth = 18;
 const NodeBoxHeight = 5;
@@ -30,6 +30,8 @@ export class FlowCanvas {
   > = new Map();
   private nodeIndex = 0;
 
+  private readonly spinnerSize: SpinnerSize;
+
   private panOffset = { x: 0, y: 0 };
   private zoomLevel = 1;
   private readonly minZoom = 0.5;
@@ -47,8 +49,10 @@ export class FlowCanvas {
     contentHeight: number,
     private readonly parent: BoxRenderable,
     private readonly nodeDefinitions: Record<string, NodeSpec>,
+    spinnerSize: SpinnerSize,
   ) {
     this.rect = rect;
+    this.spinnerSize = spinnerSize;
 
     this.edgeLayer = new EdgeFrameBuffer(
       this.renderer,
@@ -316,8 +320,7 @@ export class FlowCanvas {
       parent: this.parent,
       left: node.left ?? node.x ?? 0,
       top: node.top ?? node.y ?? 0,
-      width: 2,
-      height: 1,
+      size: this.spinnerSize,
       zIndex: (node.zIndex ?? 0) + 1,
       visible: false,
     });
@@ -330,8 +333,17 @@ export class FlowCanvas {
     const spinner = this.nodeSpinners.get(node);
     if (!spinner) return;
 
-    const left = (node.left ?? node.x ?? 0) + Math.max(1, node.width - 3);
-    const top = node.top ?? node.y ?? 0;
+    const spinnerWidth = spinner.width;
+    const spinnerHeight = spinner.height;
+
+    const nodeLeft = node.left ?? node.x ?? 0;
+    const nodeTop = node.top ?? node.y ?? 0;
+    const nodeWidth = node.width ?? 0;
+    const nodeHeight = node.height ?? 1;
+
+    const left = nodeLeft + Math.max(1, nodeWidth - spinnerWidth - 1);
+    const top =
+      nodeTop + Math.max(0, Math.floor((nodeHeight - spinnerHeight) / 2));
     spinner.updateLayout(left, top);
   }
 

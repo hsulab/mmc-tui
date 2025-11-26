@@ -3,6 +3,51 @@ import { BoxRenderable, CliRenderer, RGBA } from "@opentui/core";
 import { LattePalette } from "../palette.ts";
 
 export type SpinnerState = "idle" | "queued" | "running" | "success" | "error";
+export type SpinnerSize = "tiny" | "medium" | "large";
+
+type SpinnerFrame = string[];
+
+const BRAILLE_FRAMES: SpinnerFrame[] = [
+  ["⠋"],
+  ["⠙"],
+  ["⠹"],
+  ["⠸"],
+  ["⠼"],
+  ["⠴"],
+  ["⠦"],
+  ["⠧"],
+  ["⠇"],
+  ["⠏"],
+];
+
+function createLineFrames(width: number, glyph = "●"): SpinnerFrame[] {
+  if (width <= 1) {
+    return [[glyph]];
+  }
+
+  const forward = Array.from({ length: width }, (_, index) => index);
+  const backward = Array.from(
+    { length: Math.max(0, width - 2) },
+    (_, index) => width - 2 - index,
+  );
+
+  const positions = [...forward, ...backward];
+
+  return positions.map((position) => {
+    const leftPadding = " ".repeat(position);
+    const rightPadding = " ".repeat(Math.max(0, width - position - 1));
+    return [`${leftPadding}${glyph}${rightPadding}`];
+  });
+}
+
+const SPINNER_CONFIGS: Record<
+  SpinnerSize,
+  { frames: SpinnerFrame[]; defaultWidth: number; defaultHeight: number }
+> = {
+  tiny: { frames: BRAILLE_FRAMES, defaultWidth: 2, defaultHeight: 1 },
+  medium: { frames: createLineFrames(3), defaultWidth: 3, defaultHeight: 1 },
+  large: { frames: createLineFrames(5), defaultWidth: 5, defaultHeight: 1 },
+};
 
 export interface SpinnerOptions {
   id: string;
@@ -13,6 +58,7 @@ export interface SpinnerOptions {
   height?: number;
   zIndex?: number;
   visible?: boolean;
+  size?: SpinnerSize;
   backgroundColor?: RGBA;
   queuedColor?: RGBA;
   runningColor?: RGBA;
@@ -28,7 +74,8 @@ export class Spinner {
   private interval: ReturnType<typeof setInterval> | null = null;
   private state: SpinnerState = "idle";
 
-  private readonly frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  private readonly size: SpinnerSize;
+  private readonly frames: SpinnerFrame[];
 
   private readonly queuedColor: RGBA;
   private readonly runningColor: RGBA;
@@ -41,8 +88,7 @@ export class Spinner {
       parent,
       left,
       top,
-      width = 2,
-      height = 1,
+      size = "tiny",
       zIndex = 0,
       visible = false,
       backgroundColor = RGBA.fromInts(0, 0, 0, 0),
@@ -51,6 +97,10 @@ export class Spinner {
       successColor = RGBA.fromHex(LattePalette.teal),
       errorColor = RGBA.fromHex(LattePalette.red),
     } = options;
+
+    this.size = size;
+    const { frames, width, height } = this.getSpinnerConfig(size, options);
+    this.frames = frames;
 
     this.queuedColor = queuedColor;
     this.runningColor = runningColor;
@@ -141,29 +191,50 @@ export class Spinner {
   private render(buffer: any): void {
     if (this.state === "idle") return;
 
-    const textX =
-      this.box.x + Math.max(0, Math.floor((this.box.width - 1) / 2));
-    const textY = this.box.y;
+    const { lines, color } = this.getFrameAndColor();
+    const verticalOffset = Math.max(
+      0,
+      Math.floor((this.box.height - lines.length) / 2),
+    );
 
-    const { symbol, color } = this.getSymbolAndColor();
-    buffer.drawText(symbol, textX, textY, color);
+    lines.forEach((line, rowIndex) => {
+      if (rowIndex + verticalOffset >= this.box.height) return;
+
+      const textX =
+        this.box.x +
+        Math.max(0, Math.floor((this.box.width - line.length) / 2));
+      const textY = this.box.y + verticalOffset + rowIndex;
+
+      buffer.drawText(line, textX, textY, color);
+    });
   }
 
-  private getSymbolAndColor(): { symbol: string; color: RGBA } {
+  private getFrameAndColor(): { lines: SpinnerFrame; color: RGBA } {
     switch (this.state) {
       case "queued":
-        return { symbol: "•", color: this.queuedColor };
+        return { lines: ["•"], color: this.queuedColor };
       case "running":
         return {
-          symbol: this.frames[this.frameIndex]!,
+          lines: this.frames[this.frameIndex]!,
           color: this.runningColor,
         };
       case "success":
-        return { symbol: "✓", color: this.successColor };
+        return { lines: ["✓"], color: this.successColor };
       case "error":
-        return { symbol: "!", color: this.errorColor };
+        return { lines: ["!"], color: this.errorColor };
       default:
-        return { symbol: " ", color: RGBA.fromInts(0, 0, 0, 0) };
+        return { lines: [" "], color: RGBA.fromInts(0, 0, 0, 0) };
     }
+  }
+
+  private getSpinnerConfig(
+    size: SpinnerSize,
+    options: SpinnerOptions,
+  ): { frames: SpinnerFrame[]; width: number; height: number } {
+    const base = SPINNER_CONFIGS[size] ?? SPINNER_CONFIGS.tiny;
+    const width = options.width ?? base.defaultWidth;
+    const height = options.height ?? base.defaultHeight;
+
+    return { frames: base.frames, width, height };
   }
 }
