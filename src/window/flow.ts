@@ -70,21 +70,21 @@ export class FlowPane extends Pane {
     }
   > = {
     Build: {
-      description: "  Build structures (0 in / 1 out)",
+      description: "  Build structures",
       maxIn: 0,
       maxOut: 1,
       allowedOutgoing: ["Compute"],
       allowedIncoming: [],
     },
     Compute: {
-      description: "  Run calculation/simulation (1 in / 1 out)",
+      description: "  Run calculation/simulation)",
       maxIn: 1,
       maxOut: 1,
       allowedOutgoing: ["Validate"],
       allowedIncoming: ["Build"],
     },
     Validate: {
-      description: "  Analyze and verify data (1 in / 0 out)",
+      description: "  Analyze and verify data",
       maxIn: 1,
       maxOut: 0,
       allowedOutgoing: [],
@@ -145,7 +145,6 @@ export class FlowPane extends Pane {
       this.renderer,
       `${this.id}-edges`,
       () => this.edges,
-      "⋯",
       RGBA.fromHex(LattePalette.surface0),
     );
     this.edgeLayer.top = 0;

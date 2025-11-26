@@ -14,14 +14,14 @@ export class EdgeFrameBuffer extends FrameBufferRenderable {
   private readonly BACKGROUND_COLOR: RGBA;
   private readonly LINE_COLOR = RGBA.fromHex(LattePalette.subtext0);
 
-  private linemarker: string;
+  private linemarker?: string;
 
   constructor(
     renderer: CliRenderer,
     id: string,
     private readonly edgesProvider: () => NodeEdge[],
-    linemarker: string = "⋯", // "⠒"
     backgroundColor: RGBA = RGBA.fromHex(LattePalette.base),
+    linemarker?: string, // Default to directional arrows instead of "⋯", "⠒"
   ) {
     super(renderer, {
       id,
@@ -55,11 +55,17 @@ export class EdgeFrameBuffer extends FrameBufferRenderable {
     let currentY = y0;
 
     const dx = Math.abs(x1 - x0);
-    const sx = x0 < x1 ? 1 : -1;
     const dy = -Math.abs(y1 - y0);
-    const sy = y0 < y1 ? 1 : -1;
     let err = dx + dy;
+
+    const sx = x0 < x1 ? 1 : -1;
+    const sy = y0 < y1 ? 1 : -1;
+
+    const lx = (x1 - x0) * sx;
+    const ly = (y1 - y0) * sy;
+
     let drawDot = true;
+    // console.log(`Drawing dotted line from (${x0}, ${y0}) to (${x1}, ${y1})`);
 
     while (true) {
       if (
@@ -72,7 +78,7 @@ export class EdgeFrameBuffer extends FrameBufferRenderable {
         this.frameBuffer.setCell(
           currentX,
           currentY,
-          this.linemarker,
+          this.linemarker ?? this.getDirectionalMarker(lx, ly),
           this.LINE_COLOR,
           this.BACKGROUND_COLOR,
         );
@@ -91,5 +97,22 @@ export class EdgeFrameBuffer extends FrameBufferRenderable {
 
       drawDot = !drawDot;
     }
+  }
+
+  private getDirectionalMarker(stepX: number, stepY: number): string {
+    if (stepX === 0 && stepY === 0) return "•";
+
+    if (stepY === 0) {
+      return stepX > 0 ? "→" : "←";
+    }
+
+    if (stepX === 0) {
+      return stepY > 0 ? "↓" : "↑";
+    }
+
+    if (stepX > 0 && stepY > 0) return "↘";
+    if (stepX > 0 && stepY < 0) return "↗";
+    if (stepX < 0 && stepY > 0) return "↙";
+    return "↖";
   }
 }
