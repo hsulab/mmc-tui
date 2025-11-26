@@ -314,7 +314,8 @@ export class FlowPane extends Pane {
     if (!this.runSpinner || this.isWorkflowRunning) return;
 
     this.isWorkflowRunning = true;
-    this.runSpinner.setState("running");
+    // this.runSpinner.setState("running");
+    this.runSpinner.setState("idle");
   }
 
   private stopRunSpinner(): void {
@@ -393,7 +394,7 @@ export class FlowPane extends Pane {
 
     this.canvas?.setNodeSpinnerState(node, "running");
 
-    node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
+    // node.backgroundColor = RGBA.fromHex(LattePalette.yellow);
 
     console.log(
       `[workflow] (${step}/${total}) Executing ${nodeType} node "${nodeLabel}" in FlowPane ${this.id}`,
