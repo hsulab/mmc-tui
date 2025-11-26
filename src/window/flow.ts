@@ -37,6 +37,17 @@ export class FlowPane extends Pane {
 
   private nodeIndex: number = 0;
 
+  private panOffset = { x: 0, y: 0 };
+  private zoomLevel = 1;
+  private readonly zoomStep = 0.1;
+  private readonly minZoom = 0.5;
+  private readonly maxZoom = 2;
+
+  private nodePositions: Map<
+    SelectableBoxRenderable,
+    { x: number; y: number }
+  > = new Map();
+
   private runButton: BoxRenderable | null = null;
   private isRunButtonPressed = false;
 
@@ -105,7 +116,13 @@ export class FlowPane extends Pane {
 
     this.nodeSelector?.updateBounds(this.rect);
 
+    this.applyViewTransform();
+
     this.setupKeybinds(this.renderer);
+  }
+
+  private get contentOrigin(): { x: number; y: number } {
+    return { x: this.rect.left, y: this.rect.top + this.contentTop };
   }
 
   private createEdgeLayer(): void {
@@ -521,7 +538,10 @@ export class FlowPane extends Pane {
         this.handleNodeSelection(box as SelectableBoxRenderable),
       onDeselect: (box) =>
         this.handleNodeDeselection(box as SelectableBoxRenderable),
-      onMove: () => this.requestEdgeRender(),
+      onMove: (box) => {
+        this.updateWorldPosition(box as SelectableBoxRenderable);
+        this.requestEdgeRender();
+      },
       selectedBorderColor: RGBA.fromHex(LattePalette.red),
     });
     this.box!.add(newBox);
@@ -530,8 +550,80 @@ export class FlowPane extends Pane {
       type: value,
       label: nodeLabel,
     });
+    this.nodePositions.set(
+      newBox as SelectableBoxRenderable,
+      this.screenToWorld(newBox.x, newBox.y),
+    );
+    this.applyViewTransform();
     this.requestEdgeRender();
     console.log(`New ${nodeLabel} node created in FlowPane ${this.id}`);
+  }
+
+  private screenToWorld(x: number, y: number): { x: number; y: number } {
+    const origin = this.contentOrigin;
+    return {
+      x: (x - origin.x) / this.zoomLevel - this.panOffset.x,
+      y: (y - origin.y) / this.zoomLevel - this.panOffset.y,
+    };
+  }
+
+  private worldToScreen(x: number, y: number): { x: number; y: number } {
+    const origin = this.contentOrigin;
+    return {
+      x: Math.round(origin.x + (x + this.panOffset.x) * this.zoomLevel),
+      y: Math.round(origin.y + (y + this.panOffset.y) * this.zoomLevel),
+    };
+  }
+
+  private updateWorldPosition(node: SelectableBoxRenderable): void {
+    this.nodePositions.set(
+      node,
+      this.screenToWorld(node.x ?? node.left ?? 0, node.y ?? node.top ?? 0),
+    );
+  }
+
+  private applyViewTransform(): void {
+    this.nodes.forEach((node) => {
+      const position = this.nodePositions.get(node);
+      if (!position) return;
+
+      const { x, y } = this.worldToScreen(position.x, position.y);
+      node.left = x;
+      node.top = y;
+    });
+
+    this.requestEdgeRender();
+  }
+
+  private adjustZoom(delta: number): void {
+    const nextZoom = Math.min(
+      this.maxZoom,
+      Math.max(this.minZoom, this.zoomLevel + delta),
+    );
+
+    if (nextZoom === this.zoomLevel) return;
+
+    this.zoomLevel = nextZoom;
+    console.log(
+      `FlowPane ${this.id} zoom set to ${Math.round(nextZoom * 100)}%`,
+    );
+    this.applyViewTransform();
+  }
+
+  private panCanvas(dx: number, dy: number): void {
+    this.panOffset.x += dx;
+    this.panOffset.y += dy;
+    console.log(
+      `FlowPane ${this.id} panned to (${this.panOffset.x}, ${this.panOffset.y})`,
+    );
+    this.applyViewTransform();
+  }
+
+  private resetViewTransform(): void {
+    this.zoomLevel = 1;
+    this.panOffset = { x: 0, y: 0 };
+    console.log(`FlowPane ${this.id} view reset`);
+    this.applyViewTransform();
   }
 
   public setupKeybinds(renderer: CliRenderer): void {
@@ -572,6 +664,29 @@ export class FlowPane extends Pane {
             });
             console.log(`All node colors updated in FlowPane ${this.id}`);
             return;
+          case "+":
+          case "=":
+            this.adjustZoom(this.zoomStep);
+            return;
+          case "-":
+          case "_":
+            this.adjustZoom(-this.zoomStep);
+            return;
+          case "0":
+            this.resetViewTransform();
+            return;
+          case "left":
+            this.panCanvas(-2, 0);
+            return;
+          case "right":
+            this.panCanvas(2, 0);
+            return;
+          case "up":
+            this.panCanvas(0, -1);
+            return;
+          case "down":
+            this.panCanvas(0, 1);
+            return;
         }
       }
     };
@@ -609,6 +724,7 @@ export class FlowPane extends Pane {
       this.runSpinner = null;
     }
     this.nodeDetails.clear();
+    this.nodePositions.clear();
     if (this.keybinds) {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
