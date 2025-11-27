@@ -142,12 +142,26 @@ export class MaterialsPane extends Pane {
     this.keybinds = (key: any) => {
       if (!this.active) return;
 
+      const rotationStep = Math.PI / 32;
+
       switch (key.name) {
         case "b":
           void this.toggleStructure();
           break;
         case "c":
           void this.toggleCameraMode();
+          break;
+        case "left":
+          void this.rotateStructure(0, -rotationStep);
+          break;
+        case "right":
+          void this.rotateStructure(0, rotationStep);
+          break;
+        case "up":
+          void this.rotateStructure(-rotationStep, 0);
+          break;
+        case "down":
+          void this.rotateStructure(rotationStep, 0);
           break;
         default:
           break;
@@ -231,6 +245,15 @@ export class MaterialsPane extends Pane {
     this.setStatusMessage(
       `Cu FCC | ${atomCount} | Camera: ${cameraModeLabel} | press 'b' to toggle atoms, 'c' to toggle camera`,
     );
+  }
+
+  private async rotateStructure(deltaX: number, deltaY: number) {
+    await this.initPromise;
+    if (!this.latticeGroup) return;
+
+    this.latticeGroup.rotation.x += deltaX;
+    this.latticeGroup.rotation.y += deltaY;
+    this.renderer.requestRender();
   }
 
   private createCuFccGroup(
