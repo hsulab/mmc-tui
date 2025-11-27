@@ -7,12 +7,13 @@ import {
   DirectionalLight,
   EdgesGeometry,
   Group,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
-  Mesh,
-  MeshStandardMaterial,
+  Matrix4,
   MeshToonMaterial,
   PerspectiveCamera,
+  OrthographicCamera,
   Scene,
   SphereGeometry,
   Vector3,
@@ -27,15 +28,18 @@ export class MaterialsPane extends Pane {
   private threeRenderer: ThreeCliRenderer | null = null;
   private scene: Scene | null = null;
   private latticeGroup: Group | null = null;
-  private camera: PerspectiveCamera | null = null;
+  private camera: PerspectiveCamera | OrthographicCamera | null = null;
   private frameCallback: ((deltaTime: number) => Promise<void>) | null = null;
   private initPromise: Promise<void> | null = null;
+  private keybinds: ((key: any) => void) | null = null;
+  private structure: "Cu4" | "Cu256" = "Cu4";
 
   constructor(renderer: CliRenderer, id: string, active: boolean, rect: Rect) {
     super(renderer, id, active, rect);
 
-    this.setStatusMessage("Cu FCC | 4 atoms");
+    this.updateStatusLabel();
     this.initPromise = this.initializeScene();
+    this.setupKeybinds();
   }
 
   override get type(): string {
@@ -65,6 +69,15 @@ export class MaterialsPane extends Pane {
       this.box?.remove(this.canvas.id);
       this.canvas.destroy();
       this.canvas = null;
+    }
+
+    if (this.keybinds) {
+      this.renderer.keyInput.off("keypress", this.keybinds);
+      this.keybinds = null;
+    }
+
+    if (this.latticeGroup) {
+      this.disposeGroup(this.latticeGroup);
     }
 
     this.scene = null;
@@ -107,8 +120,16 @@ export class MaterialsPane extends Pane {
       55,
       Math.max(1, this.contentWidth) / Math.max(1, this.contentHeight),
       0.1,
-      20,
+      10,
     );
+    // this.camera = new OrthographicCamera(
+    //   Math.max(1, this.contentWidth) / -100,
+    //   Math.max(1, this.contentWidth) / 100,
+    //   Math.max(1, this.contentHeight) / 100,
+    //   Math.max(1, this.contentHeight) / -100,
+    //   0.1,
+    //   20,
+    // );
     this.camera.position.set(1.7, 1.5, 2.4);
     this.camera.lookAt(0, 0, 0);
     this.threeRenderer.setActiveCamera(this.camera);
@@ -117,13 +138,32 @@ export class MaterialsPane extends Pane {
     const directional = new DirectionalLight(0xffffff, 0.8);
     directional.position.set(1.5, 1.25, 1.75);
 
-    this.latticeGroup = this.createCuFccGroup();
+    const supercell =
+      this.structure === "Cu256" ? { x: 4, y: 4, z: 4 } : { x: 1, y: 1, z: 1 };
+
+    this.latticeGroup = this.createCuFccGroup(supercell);
 
     this.scene.add(ambient);
     this.scene.add(directional);
     this.scene.add(this.latticeGroup);
 
     this.registerFrameCallback();
+  }
+
+  private setupKeybinds() {
+    this.keybinds = (key: any) => {
+      if (!this.active) return;
+
+      switch (key.name) {
+        case "b":
+          void this.toggleStructure();
+          break;
+        default:
+          break;
+      }
+    };
+
+    this.renderer.keyInput.on("keypress", this.keybinds);
   }
 
   private registerFrameCallback() {
@@ -170,7 +210,35 @@ export class MaterialsPane extends Pane {
     }
   }
 
-  private createCuFccGroup(): Group {
+  private async toggleStructure() {
+    this.structure = this.structure === "Cu4" ? "Cu256" : "Cu4";
+    this.updateStatusLabel();
+
+    await this.initPromise;
+    if (!this.scene) return;
+
+    if (this.latticeGroup) {
+      this.scene.remove(this.latticeGroup);
+      this.disposeGroup(this.latticeGroup);
+    }
+
+    const supercell =
+      this.structure === "Cu256" ? { x: 4, y: 4, z: 4 } : { x: 1, y: 1, z: 1 };
+
+    this.latticeGroup = this.createCuFccGroup(supercell);
+    this.scene.add(this.latticeGroup);
+    this.renderer.requestRender();
+  }
+
+  private updateStatusLabel() {
+    const atomCount =
+      this.structure === "Cu4" ? "4 atoms" : "256 atoms (4x4x4)";
+    this.setStatusMessage(`Cu FCC | ${atomCount} | press 'b' to toggle`);
+  }
+
+  private createCuFccGroup(
+    supercell: { x: number; y: number; z: number } = { x: 1, y: 1, z: 1 },
+  ): Group {
     const group = new Group();
 
     const latticeConstant = 1;
@@ -185,30 +253,68 @@ export class MaterialsPane extends Pane {
     const atomMaterial = new MeshToonMaterial({
       color: new Color("#df8e1d"),
     });
+    const totalAtoms =
+      supercell.x * supercell.y * supercell.z * positions.length;
+    const instancedAtoms = new InstancedMesh(
+      atomGeometry,
+      atomMaterial,
+      totalAtoms,
+    );
+    const offset = new Vector3(
+      supercell.x / 2,
+      supercell.y / 2,
+      supercell.z / 2,
+    );
+    const transform = new Matrix4();
 
-    positions.forEach((position) => {
-      const atom = new Mesh(atomGeometry, atomMaterial);
-      atom.position.copy(position.subScalar(0.5));
-      group.add(atom);
-    });
+    let index = 0;
+    for (let ix = 0; ix < supercell.x; ix++) {
+      for (let iy = 0; iy < supercell.y; iy++) {
+        for (let iz = 0; iz < supercell.z; iz++) {
+          const cellOrigin = new Vector3(ix, iy, iz);
+          positions.forEach((basis) => {
+            const position = cellOrigin.clone().add(basis).sub(offset);
+            transform.makeTranslation(position.x, position.y, position.z);
+            instancedAtoms.setMatrixAt(index, transform);
+            index += 1;
+          });
+        }
+      }
+    }
+
+    instancedAtoms.instanceMatrix.needsUpdate = true;
+    group.add(instancedAtoms);
 
     const boxGeometry = new BoxGeometry(
-      latticeConstant,
-      latticeConstant,
-      latticeConstant,
+      supercell.x * latticeConstant,
+      supercell.y * latticeConstant,
+      supercell.z * latticeConstant,
     );
     const edges = new EdgesGeometry(boxGeometry);
     const boxLines = new LineSegments(
       edges,
       new LineBasicMaterial({ color: new Color(LattePalette.overlay0) }),
     );
-    boxLines.position.set(0, 0, 0);
-    boxLines.translateX(-0.5);
-    boxLines.translateY(-0.5);
-    boxLines.translateZ(-0.5);
     group.add(boxLines);
 
     return group;
+  }
+
+  private disposeGroup(group: Group) {
+    group.traverse((child) => {
+      const meshChild = child as any;
+      if (meshChild.geometry) {
+        meshChild.geometry.dispose?.();
+      }
+      if (meshChild.material) {
+        const material = meshChild.material;
+        if (Array.isArray(material)) {
+          material.forEach((m) => m.dispose?.());
+        } else {
+          material.dispose?.();
+        }
+      }
+    });
   }
 
   private spinLattice(deltaTime: number) {
