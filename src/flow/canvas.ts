@@ -39,6 +39,9 @@ export class FlowCanvas {
   private readonly minZoom = 0.5;
   private readonly maxZoom = 2;
 
+  private contentWidth = 0;
+  private contentHeight = 0;
+
   private contentOrigin: { x: number; y: number } = { x: 0, y: 0 };
   private rect: Rect;
 
@@ -77,14 +80,17 @@ export class FlowCanvas {
     contentHeight: number,
   ): void {
     this.rect = rect;
-    // this.contentOrigin = { x: rect.left, y: rect.top + contentTop };
-    this.contentOrigin = { x: 0, y: 0 };
+    this.contentWidth = contentWidth;
+    this.contentHeight = contentHeight;
+    this.contentOrigin = { x: rect.left, y: rect.top + contentTop };
 
+    // Edge layer is relative to parent, so position at 0,0
     this.edgeLayer.top = 0;
     this.edgeLayer.left = 0;
     this.edgeLayer.width = contentWidth;
     this.edgeLayer.height = contentHeight;
 
+    this.wrapNodePositions();
     this.applyViewTransform();
   }
 
@@ -104,13 +110,11 @@ export class FlowCanvas {
     const nodeId = `${this.paneId}-${value.toLowerCase()}-${this.nodeIndex}`;
     const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
 
-    const top = this.rect.top + 2;
-    const left =
-      this.rect.left +
-      Math.max(
-        0,
-        Math.floor(((this.rect.width - NodeBoxWidth) / 8) * Math.random()),
-      );
+    const maxX = Math.max(0, this.contentWidth - NodeBoxWidth);
+    const maxY = Math.max(0, this.contentHeight - NodeBoxHeight);
+    const worldX = Math.floor((Math.random() * (maxX + 1)) / 4);
+    const worldY = Math.floor((Math.random() * (maxY + 1)) / 4);
+    const { x: left, y: top } = this.worldToScreen(worldX, worldY);
 
     const newBox = DraggableBox(this.renderer, {
       id: nodeId,
@@ -139,13 +143,10 @@ export class FlowCanvas {
       label: nodeLabel,
     });
     this.createNodeSpinner(newBox as SelectableBoxRenderable);
-    this.nodePositions.set(
-      newBox as SelectableBoxRenderable,
-      this.screenToWorld(
-        (newBox.left as number) ?? newBox.x ?? 0,
-        (newBox.top as number) ?? newBox.y ?? 0,
-      ),
-    );
+    this.nodePositions.set(newBox as SelectableBoxRenderable, {
+      x: worldX,
+      y: worldY,
+    });
 
     this.applyViewTransform();
     this.requestEdgeRender();
@@ -332,6 +333,22 @@ export class FlowCanvas {
       node,
       this.screenToWorld(node.x ?? node.left ?? 0, node.y ?? node.top ?? 0),
     );
+  }
+
+  private wrapNodePositions(): void {
+    if (this.contentWidth <= 0 || this.contentHeight <= 0) return;
+
+    const maxX = Math.max(0, this.contentWidth - NodeBoxWidth);
+    const maxY = Math.max(0, this.contentHeight - NodeBoxHeight);
+
+    this.nodePositions.forEach((position, node) => {
+      const x = Math.min(maxX, Math.max(0, position.x));
+      const y = Math.min(maxY, Math.max(0, position.y));
+
+      if (x !== position.x || y !== position.y) {
+        this.nodePositions.set(node, { x, y });
+      }
+    });
   }
 
   private createNodeSpinner(node: SelectableBoxRenderable): void {
