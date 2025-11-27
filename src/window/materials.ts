@@ -92,22 +92,20 @@ export class MaterialsPane extends Pane {
   private async initializeScene() {
     if (this.canvas || this.threeRenderer) return;
 
-    const initialLayout = this.getSquareLayout();
-
     this.canvas = new FrameBufferRenderable(this.renderer, {
       id: `materials-canvas-${this.id}`,
-      top: initialLayout.top,
-      left: initialLayout.left,
-      width: initialLayout.size,
-      height: initialLayout.size,
+      top: 0,
+      left: 0,
+      width: this.contentWidth,
+      height: this.contentHeight,
       zIndex: 1,
     });
 
     this.box?.add(this.canvas);
 
     this.threeRenderer = new ThreeCliRenderer(this.renderer, {
-      width: initialLayout.size,
-      height: initialLayout.size,
+      width: this.contentWidth,
+      height: this.contentHeight,
       backgroundColor: RGBA.fromHex(LattePalette.base),
       superSample: SuperSampleType.GPU,
       alpha: false,
@@ -119,7 +117,7 @@ export class MaterialsPane extends Pane {
     this.scene = new Scene();
     this.scene.background = new Color(LattePalette.base);
 
-    this.camera = this.createCamera(initialLayout.size, initialLayout.size);
+    this.camera = this.createCamera(this.contentWidth, this.contentHeight);
     this.threeRenderer.setActiveCamera(this.camera);
 
     const ambient = new AmbientLight(0xffffff, 0.55);
@@ -195,22 +193,25 @@ export class MaterialsPane extends Pane {
   private updateCanvasLayout() {
     if (!this.canvas || !this.threeRenderer) return;
 
-    const { size, left, top } = this.getSquareLayout();
+    const top = 0;
+    const left = 0;
+    const width = this.contentWidth;
+    const height = this.contentHeight;
 
     const needsResize =
-      this.canvas.width !== size ||
-      this.canvas.height !== size ||
+      this.canvas.width !== width ||
+      this.canvas.height !== height ||
       this.canvas.left !== left ||
       this.canvas.top !== top;
 
     this.canvas.top = top;
     this.canvas.left = left;
-    this.canvas.width = size;
-    this.canvas.height = size;
+    this.canvas.width = width;
+    this.canvas.height = height;
 
     if (needsResize) {
-      this.threeRenderer.setSize(size, size, true);
-      this.updateCameraProjection(size, size);
+      this.threeRenderer.setSize(width, height, true);
+      this.updateCameraProjection(width, height);
     }
   }
 
@@ -328,8 +329,7 @@ export class MaterialsPane extends Pane {
     await this.initPromise;
     if (!this.threeRenderer) return;
 
-    const { size } = this.getSquareLayout();
-    this.camera = this.createCamera(size, size);
+    this.camera = this.createCamera(this.contentWidth, this.contentHeight);
     this.threeRenderer.setActiveCamera(this.camera);
     this.renderer.requestRender();
   }
@@ -379,16 +379,6 @@ export class MaterialsPane extends Pane {
 
   private getOrthoFrustumHalfHeight() {
     return this.structure === "Cu256" ? 2.6 : 1.8;
-  }
-
-  private getSquareLayout() {
-    const availableWidth = Math.max(1, this.contentWidth);
-    const availableHeight = Math.max(1, this.contentHeight);
-    const size = Math.max(1, Math.min(availableWidth, availableHeight));
-    const left = Math.floor((availableWidth - size) / 2);
-    const top = Math.floor((availableHeight - size) / 2);
-
-    return { size, left, top };
   }
 
   private disposeGroup(group: Group) {
