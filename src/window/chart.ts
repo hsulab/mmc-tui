@@ -75,9 +75,9 @@ export class ChartPane extends Pane {
     });
 
     this.setStatusMessage(title);
-    if (this.box) {
-      this.box.title = `${this.type}-${this.id.slice(-12)} | ${title}`;
-    }
+    // if (this.box) {
+    //   this.box.title = `${this.type}-${this.id.slice(-12)} | ${title}`;
+    // }
   }
 
   override draw(): void {
@@ -85,7 +85,8 @@ export class ChartPane extends Pane {
     console.log();
     console.log(`${this.canvas}`);
 
-    this.canvas!.top = this.contentTop;
+    // canvas position is relative to box content area
+    this.canvas!.top = 0;
     this.canvas!.left = 0;
     this.canvas!.width = this.contentWidth;
     this.canvas!.height = this.contentHeight;
