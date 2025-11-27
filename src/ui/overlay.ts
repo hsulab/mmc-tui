@@ -54,7 +54,7 @@ export class OverlaySelector {
       borderStyle: "rounded",
       borderColor: LattePalette.peach,
       backgroundColor: LattePalette.surface0,
-      zIndex: 400,
+      zIndex: 1000,
     });
 
     this.selector = new SelectRenderable(this.renderer, {
@@ -63,7 +63,7 @@ export class OverlaySelector {
       left: 0,
       width: Math.max(0, this.baseWidth - 2),
       height: Math.max(0, this.selectorHeight - 2),
-      zIndex: 401,
+      zIndex: 1001,
       options: config.options,
       backgroundColor: LattePalette.surface0,
       textColor: LattePalette.text,
