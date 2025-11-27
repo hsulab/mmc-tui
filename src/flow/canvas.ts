@@ -100,26 +100,22 @@ export class FlowCanvas {
   }
 
   public createNode(value: string): SelectableBoxRenderable {
-    console.log(
-      `before creating node ${this.rect.top} ${this.rect.left} ${this.rect.width} ${this.rect.height}`,
-    );
     this.nodeIndex++;
     const nodeId = `${this.paneId}-${value.toLowerCase()}-${this.nodeIndex}`;
     const nodeLabel = `${value.toLocaleLowerCase()} #${this.nodeIndex}`;
 
-    const x =
+    const top = this.rect.top + 2;
+    const left =
       this.rect.left +
       Math.max(
         0,
-        Math.floor(((this.rect.width - NodeBoxWidth) / 4) * Math.random()),
+        Math.floor(((this.rect.width - NodeBoxWidth) / 8) * Math.random()),
       );
-    const y = this.rect.top + 3;
-    console.log(`calculating node ${nodeId} at screen position (${x}, ${y})`);
 
     const newBox = DraggableBox(this.renderer, {
       id: nodeId,
-      top: y,
-      left: x,
+      top: top,
+      left: left,
       width: NodeBoxWidth,
       height: NodeBoxHeight,
       label: nodeLabel,
@@ -135,9 +131,6 @@ export class FlowCanvas {
       },
       selectedBorderColor: RGBA.fromHex(LattePalette.red),
     });
-    console.log(
-      `creating node ${nodeId} at screen position (${newBox.x}, ${newBox.y})`,
-    );
 
     this.parent.add(newBox);
     this.nodes.push(newBox as SelectableBoxRenderable);
@@ -148,10 +141,10 @@ export class FlowCanvas {
     this.createNodeSpinner(newBox as SelectableBoxRenderable);
     this.nodePositions.set(
       newBox as SelectableBoxRenderable,
-      this.screenToWorld(newBox.x, newBox.y),
-    );
-    console.log(
-      `transforming node ${nodeId} at screen position (${newBox.x}, ${newBox.y})`,
+      this.screenToWorld(
+        (newBox.left as number) ?? newBox.x ?? 0,
+        (newBox.top as number) ?? newBox.y ?? 0,
+      ),
     );
 
     this.applyViewTransform();
@@ -233,7 +226,7 @@ export class FlowCanvas {
       this.pendingConnectionNode !== node;
 
     if (isConnecting) {
-      this.connectNodes(this.pendingConnectionNode, node);
+      this.connectNodes(this.pendingConnectionNode!, node);
       this.pendingConnectionNode = null;
     } else {
       this.pendingConnectionNode = node;
@@ -345,8 +338,8 @@ export class FlowCanvas {
     const spinner = new Spinner(this.renderer, {
       id: `${node.id}-spinner`,
       parent: this.parent,
-      left: node.left ?? node.x ?? 0,
-      top: node.top ?? node.y ?? 0,
+      left: (node.left as number) ?? node.x ?? 0,
+      top: (node.top as number) ?? node.y ?? 0,
       size: this.spinnerSize,
       zIndex: (node.zIndex ?? 0) + 1,
       visible: false,
@@ -363,8 +356,8 @@ export class FlowCanvas {
     const spinnerWidth = spinner.width;
     const spinnerHeight = spinner.height;
 
-    const nodeLeft = node.left ?? node.x ?? 0;
-    const nodeTop = node.top ?? node.y ?? 0;
+    const nodeLeft = (node.left as number) ?? node.x ?? 0;
+    const nodeTop = (node.top as number) ?? node.y ?? 0;
     const nodeWidth = node.width ?? 0;
     const nodeHeight = node.height ?? 1;
 
