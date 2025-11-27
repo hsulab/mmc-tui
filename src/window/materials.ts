@@ -64,8 +64,15 @@ export class MaterialsPane extends Pane {
       this.frameCallback = null;
     }
 
-    this.threeRenderer?.destroy();
-    this.threeRenderer = null;
+    // Must dispose geometries and materials before destroying the three renderer.
+    if (this.latticeGroup) {
+      this.disposeGroup(this.latticeGroup);
+    }
+
+    if (this.threeRenderer) {
+      this.threeRenderer.destroy();
+      this.threeRenderer = null;
+    }
 
     if (this.canvas) {
       this.box?.remove(this.canvas.id);
@@ -76,10 +83,6 @@ export class MaterialsPane extends Pane {
     if (this.keybinds) {
       this.renderer.keyInput.off("keypress", this.keybinds);
       this.keybinds = null;
-    }
-
-    if (this.latticeGroup) {
-      this.disposeGroup(this.latticeGroup);
     }
 
     this.scene = null;
