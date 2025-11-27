@@ -71,7 +71,7 @@ export class ChartPane extends Pane {
 
     this.canvas?.setSeriesData(points, {
       backgroundColor: RGBA.fromHex(LattePalette.surface0),
-      color: RGBA.fromHex(LattePalette.sapphire),
+      color: RGBA.fromHex(LattePalette.red),
     });
 
     this.setStatusMessage(title);

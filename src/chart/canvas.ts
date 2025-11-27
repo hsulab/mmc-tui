@@ -69,7 +69,10 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
     this.renderPlot();
   }
 
-  public setSeriesData(points: Array<{ x: number; y: number }>, config?: PlotConfig) {
+  public setSeriesData(
+    points: Array<{ x: number; y: number }>,
+    config?: PlotConfig,
+  ) {
     this.plotDefinition = { kind: "data", points, config };
     this.renderPlot();
   }
@@ -107,12 +110,14 @@ export class ChartCanvasFrameBuffer extends FrameBufferRenderable {
 
     const fg =
       this.plotDefinition.kind === "function"
-        ? this.plotDefinition.config.color ?? RGBA.fromHex(LattePalette.blue)
-        : this.plotDefinition.config?.color ?? RGBA.fromHex(LattePalette.blue);
+        ? (this.plotDefinition.config.color ?? RGBA.fromHex(LattePalette.red))
+        : (this.plotDefinition.config?.color ?? RGBA.fromHex(LattePalette.red));
     const axisColor =
       this.plotDefinition.kind === "function"
-        ? this.plotDefinition.config.axisColor ?? RGBA.fromHex(LattePalette.text)
-        : this.plotDefinition.config?.axisColor ?? RGBA.fromHex(LattePalette.text);
+        ? (this.plotDefinition.config.axisColor ??
+          RGBA.fromHex(LattePalette.text))
+        : (this.plotDefinition.config?.axisColor ??
+          RGBA.fromHex(LattePalette.text));
 
     const { samples, xRange } = this.getSamples();
 
