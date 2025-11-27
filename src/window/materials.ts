@@ -29,6 +29,8 @@ export class MaterialsPane extends Pane {
   private scene: Scene | null = null;
   private latticeGroup: Group | null = null;
   private camera: PerspectiveCamera | OrthographicCamera | null = null;
+  private cameraMode: "perspective" | "orthographic" = "perspective";
+  private readonly cameraPosition = new Vector3(1.7, 1.5, 2.4);
   private frameCallback: ((deltaTime: number) => Promise<void>) | null = null;
   private initPromise: Promise<void> | null = null;
   private keybinds: ((key: any) => void) | null = null;
@@ -90,21 +92,22 @@ export class MaterialsPane extends Pane {
   private async initializeScene() {
     if (this.canvas || this.threeRenderer) return;
 
+    const initialLayout = this.getSquareLayout();
+
     this.canvas = new FrameBufferRenderable(this.renderer, {
       id: `materials-canvas-${this.id}`,
-      // position: "absolute",
-      top: 0,
-      left: 0,
-      width: Math.max(1, this.contentWidth),
-      height: Math.max(1, this.contentHeight),
+      top: initialLayout.top,
+      left: initialLayout.left,
+      width: initialLayout.size,
+      height: initialLayout.size,
       zIndex: 1,
     });
 
     this.box?.add(this.canvas);
 
     this.threeRenderer = new ThreeCliRenderer(this.renderer, {
-      width: Math.max(1, this.contentWidth),
-      height: Math.max(1, this.contentHeight),
+      width: initialLayout.size,
+      height: initialLayout.size,
       backgroundColor: RGBA.fromHex(LattePalette.base),
       superSample: SuperSampleType.GPU,
       alpha: false,
@@ -116,22 +119,7 @@ export class MaterialsPane extends Pane {
     this.scene = new Scene();
     this.scene.background = new Color(LattePalette.base);
 
-    this.camera = new PerspectiveCamera(
-      55,
-      Math.max(1, this.contentWidth) / Math.max(1, this.contentHeight),
-      0.1,
-      10,
-    );
-    // this.camera = new OrthographicCamera(
-    //   Math.max(1, this.contentWidth) / -100,
-    //   Math.max(1, this.contentWidth) / 100,
-    //   Math.max(1, this.contentHeight) / 100,
-    //   Math.max(1, this.contentHeight) / -100,
-    //   0.1,
-    //   20,
-    // );
-    this.camera.position.set(1.7, 1.5, 2.4);
-    this.camera.lookAt(0, 0, 0);
+    this.camera = this.createCamera(initialLayout.size, initialLayout.size);
     this.threeRenderer.setActiveCamera(this.camera);
 
     const ambient = new AmbientLight(0xffffff, 0.55);
@@ -157,6 +145,9 @@ export class MaterialsPane extends Pane {
       switch (key.name) {
         case "b":
           void this.toggleStructure();
+          break;
+        case "c":
+          void this.toggleCameraMode();
           break;
         default:
           break;
@@ -190,23 +181,22 @@ export class MaterialsPane extends Pane {
   private updateCanvasLayout() {
     if (!this.canvas || !this.threeRenderer) return;
 
-    const width = Math.max(1, this.contentWidth);
-    const height = Math.max(1, this.contentHeight);
+    const { size, left, top } = this.getSquareLayout();
 
     const needsResize =
-      this.canvas.width !== width || this.canvas.height !== height;
+      this.canvas.width !== size ||
+      this.canvas.height !== size ||
+      this.canvas.left !== left ||
+      this.canvas.top !== top;
 
-    this.canvas.top = 0;
-    this.canvas.left = 0;
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.canvas.top = top;
+    this.canvas.left = left;
+    this.canvas.width = size;
+    this.canvas.height = size;
 
     if (needsResize) {
-      this.threeRenderer.setSize(width, height, true);
-      if (this.camera) {
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-      }
+      this.threeRenderer.setSize(size, size, true);
+      this.updateCameraProjection(size, size);
     }
   }
 
@@ -227,13 +217,20 @@ export class MaterialsPane extends Pane {
 
     this.latticeGroup = this.createCuFccGroup(supercell);
     this.scene.add(this.latticeGroup);
+    if (this.canvas) {
+      this.updateCameraProjection(this.canvas.width, this.canvas.height);
+    }
     this.renderer.requestRender();
   }
 
   private updateStatusLabel() {
     const atomCount =
       this.structure === "Cu4" ? "4 atoms" : "256 atoms (4x4x4)";
-    this.setStatusMessage(`Cu FCC | ${atomCount} | press 'b' to toggle`);
+    const cameraModeLabel =
+      this.cameraMode === "perspective" ? "Perspective" : "Orthographic";
+    this.setStatusMessage(
+      `Cu FCC | ${atomCount} | Camera: ${cameraModeLabel} | press 'b' to toggle atoms, 'c' to toggle camera`,
+    );
   }
 
   private createCuFccGroup(
@@ -298,6 +295,77 @@ export class MaterialsPane extends Pane {
     group.add(boxLines);
 
     return group;
+  }
+
+  private async toggleCameraMode() {
+    this.cameraMode =
+      this.cameraMode === "perspective" ? "orthographic" : "perspective";
+    this.updateStatusLabel();
+
+    await this.initPromise;
+    if (!this.threeRenderer) return;
+
+    const { size } = this.getSquareLayout();
+    this.camera = this.createCamera(size, size);
+    this.threeRenderer.setActiveCamera(this.camera);
+    this.renderer.requestRender();
+  }
+
+  private createCamera(width: number, height: number) {
+    const aspect = width / height || 1;
+    if (this.cameraMode === "orthographic") {
+      const halfHeight = this.getOrthoFrustumHalfHeight();
+      const halfWidth = halfHeight * aspect;
+      const camera = new OrthographicCamera(
+        -halfWidth,
+        halfWidth,
+        halfHeight,
+        -halfHeight,
+        0.1,
+        10,
+      );
+      camera.position.copy(this.cameraPosition);
+      camera.lookAt(0, 0, 0);
+      return camera;
+    }
+
+    const camera = new PerspectiveCamera(55, aspect, 0.1, 10);
+    camera.position.copy(this.cameraPosition);
+    camera.lookAt(0, 0, 0);
+    return camera;
+  }
+
+  private updateCameraProjection(width: number, height: number) {
+    if (!this.camera) return;
+    const aspect = width / height || 1;
+
+    if (this.camera instanceof PerspectiveCamera) {
+      this.camera.aspect = aspect;
+      this.camera.updateProjectionMatrix();
+      return;
+    }
+
+    const halfHeight = this.getOrthoFrustumHalfHeight();
+    const halfWidth = halfHeight * aspect;
+    this.camera.left = -halfWidth;
+    this.camera.right = halfWidth;
+    this.camera.top = halfHeight;
+    this.camera.bottom = -halfHeight;
+    this.camera.updateProjectionMatrix();
+  }
+
+  private getOrthoFrustumHalfHeight() {
+    return this.structure === "Cu256" ? 2.6 : 1.8;
+  }
+
+  private getSquareLayout() {
+    const availableWidth = Math.max(1, this.contentWidth);
+    const availableHeight = Math.max(1, this.contentHeight);
+    const size = Math.max(1, Math.min(availableWidth, availableHeight));
+    const left = Math.floor((availableWidth - size) / 2);
+    const top = Math.floor((availableHeight - size) / 2);
+
+    return { size, left, top };
   }
 
   private disposeGroup(group: Group) {
